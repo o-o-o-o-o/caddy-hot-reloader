@@ -11,11 +11,10 @@ class CaddyHotReloader < Formula
   head "https://github.com/o-o-o-o-o/caddy-hot-reloader.git", branch: "main"
 
   depends_on "go" => :build
-  depends_on "xcaddy" => :build
 
   def install
     # Build custom Caddy with hot-reloader plugin using xcaddy
-    system "xcaddy", "build",
+    system "go", "run", "github.com/caddyserver/xcaddy/cmd/xcaddy@latest", "build",
            "--with", "github.com/o-o-o-o-o/caddy-hot-reloader=#{buildpath}",
            "--output", "#{bin}/caddy"
 
