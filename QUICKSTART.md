@@ -8,7 +8,7 @@ Get hot-reloading working in under 5 minutes.
 
 ```bash
 # Install
-brew tap yourusername/caddy-hot-reloader
+brew tap o-o-o-o-o/caddy-hot-reloader https://github.com/o-o-o-o-o/caddy-hot-reloader
 brew install caddy-hot-reloader
 
 # Configure

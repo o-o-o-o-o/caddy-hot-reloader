@@ -23,7 +23,7 @@ PLUGIN_PATH=$(pwd)
 
 # Build Caddy with the plugin
 "$XCADDY_BIN" build \
-    --with github.com/yourusername/caddy-hot-reloader="$PLUGIN_PATH"
+    --with github.com/o-o-o-o-o/caddy-hot-reloader="$PLUGIN_PATH"
 
 echo ""
 echo "✅ Build complete!"

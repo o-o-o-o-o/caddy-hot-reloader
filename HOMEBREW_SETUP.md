@@ -7,68 +7,29 @@ This guide walks you through creating and maintaining a Homebrew tap for `caddy-
 A Homebrew tap is a GitHub repository that contains Homebrew formulas. Users can install your software with:
 
 ```bash
-brew tap yourusername/caddy-hot-reloader
+brew tap o-o-o-o-o/caddy-hot-reloader https://github.com/o-o-o-o-o/caddy-hot-reloader
 brew install caddy-hot-reloader
 ```
 
 ## Initial Setup
 
-### 1. Create the Tap Repository
+### 1. Use This Repository as Tap Source
 
-On GitHub, create a new **public** repository named:
+This repository already contains:
+- `Formula/caddy-hot-reloader.rb`
+- `.github/workflows/update-formula.yml`
 
-```
-homebrew-caddy-hot-reloader
-```
-
-**Note**: The repository MUST be named `homebrew-*` for Homebrew to recognize it as a tap.
+No separate `homebrew-*` repository is required.
 
 ### 2. Clone and Setup
 
 ````bash
-git clone https://github.com/yourusername/homebrew-caddy-hot-reloader
-cd homebrew-caddy-hot-reloader
+git clone https://github.com/o-o-o-o-o/caddy-hot-reloader
+cd caddy-hot-reloader
 
-# Create Formula directory
-mkdir -p Formula
-
-# Copy the formula from this repo
-cp /path/to/caddy-hot-reloader/Formula/caddy-hot-reloader.rb Formula/
-
-# Copy GitHub Actions workflow
-mkdir -p .github/workflows
-cp /path/to/caddy-hot-reloader/.github/workflows/update-formula.yml .github/workflows/
-
-# Create README
-cat > README.md << 'EOF'
-# Caddy Hot Reloader Tap
-
-Homebrew tap for [caddy-hot-reloader](https://github.com/yourusername/caddy-hot-reloader).
-
-## Installation
-
-```bash
-brew tap yourusername/caddy-hot-reloader
-brew install caddy-hot-reloader
-````
-
-## Usage
-
-```bash
-# Start service
-brew services start caddy-hot-reloader
-
-# Check logs
-tail -f $(brew --prefix)/var/log/caddy-hot-reloader.log
-```
-
-## Documentation
-
-See the [main repository](https://github.com/yourusername/caddy-hot-reloader) for full documentation.
-EOF
-
-git add .
-git commit -m "Initial tap setup"
+# Ensure Formula and workflow are committed
+git add Formula/caddy-hot-reloader.rb .github/workflows/update-formula.yml
+git commit -m "Add Homebrew formula and update workflow"
 git push origin main
 
 ````
@@ -93,7 +54,7 @@ GitHub Actions will automatically create a PR to update the formula, but for the
 
 ```bash
 # Download the release tarball
-curl -sL https://github.com/yourusername/caddy-hot-reloader/archive/refs/tags/v1.0.0.tar.gz -o release.tar.gz
+curl -sL https://github.com/o-o-o-o-o/caddy-hot-reloader/archive/refs/tags/v1.0.0.tar.gz -o release.tar.gz
 
 # Calculate SHA256
 shasum -a 256 release.tar.gz
@@ -106,7 +67,7 @@ shasum -a 256 release.tar.gz
 Edit `Formula/caddy-hot-reloader.rb`:
 
 ```ruby
-url "https://github.com/yourusername/caddy-hot-reloader/archive/refs/tags/v1.0.0.tar.gz"
+url "https://github.com/o-o-o-o-o/caddy-hot-reloader/archive/refs/tags/v1.0.0.tar.gz"
 sha256 "abc123...your-actual-sha256"
 ```
 
@@ -122,7 +83,7 @@ git push origin main
 
 ```bash
 # Install from your tap
-brew tap yourusername/caddy-hot-reloader
+brew tap o-o-o-o-o/caddy-hot-reloader https://github.com/o-o-o-o-o/caddy-hot-reloader
 brew install caddy-hot-reloader
 
 # Verify it works
@@ -193,15 +154,15 @@ When updates are available:
 ### Manual Formula Update (if automation fails)
 
 ```bash
-cd homebrew-caddy-hot-reloader
+cd /path/to/caddy-hot-reloader
 
 # Download new release and calculate SHA
 VERSION="v1.0.1"
-curl -sL "https://github.com/yourusername/caddy-hot-reloader/archive/refs/tags/${VERSION}.tar.gz" -o release.tar.gz
+curl -sL "https://github.com/o-o-o-o-o/caddy-hot-reloader/archive/refs/tags/${VERSION}.tar.gz" -o release.tar.gz
 SHA256=$(shasum -a 256 release.tar.gz | awk '{print $1}')
 
 # Update formula
-sed -i '' "s|url \".*\"|url \"https://github.com/yourusername/caddy-hot-reloader/archive/refs/tags/${VERSION}.tar.gz\"|" Formula/caddy-hot-reloader.rb
+sed -i '' "s|url \".*\"|url \"https://github.com/o-o-o-o-o/caddy-hot-reloader/archive/refs/tags/${VERSION}.tar.gz\"|" Formula/caddy-hot-reloader.rb
 sed -i '' "s|sha256 \".*\"|sha256 \"${SHA256}\"|" Formula/caddy-hot-reloader.rb
 
 # Commit
@@ -285,7 +246,7 @@ brew upgrade caddy-hot-reloader
 ### Private Tap (for Internal Use)
 
 - Use private GitHub repo
-- Requires authentication: `brew tap yourusername/private`
+- Requires authentication: `brew tap o-o-o-o-o/private`
 - Users need GitHub access
 
 ## Resources
@@ -298,5 +259,5 @@ brew upgrade caddy-hot-reloader
 
 For issues with:
 
-- **The plugin itself**: Open issue in [caddy-hot-reloader](https://github.com/yourusername/caddy-hot-reloader)
+- **The plugin itself**: Open issue in [caddy-hot-reloader](https://github.com/o-o-o-o-o/caddy-hot-reloader)
 - **Formula/installation**: Open issue in this tap repository

@@ -77,7 +77,7 @@ The easiest way to install and manage Caddy with hot-reloader:
 
 ```bash
 # Add the tap
-brew tap yourusername/caddy-hot-reloader
+brew tap o-o-o-o-o/caddy-hot-reloader https://github.com/o-o-o-o-o/caddy-hot-reloader
 
 # Install
 brew install caddy-hot-reloader
@@ -120,14 +120,14 @@ For development or if you want to modify the plugin:
 1. Clone this repository:
 
 ```bash
-git clone https://github.com/yourusername/caddy-hot-reloader
+git clone https://github.com/o-o-o-o-o/caddy-hot-reloader
 cd caddy-hot-reloader
 ```
 
 2. Build Caddy with the plugin using `xcaddy`:
 
 ```bash
-xcaddy build --with github.com/yourusername/caddy-hot-reloader=.
+xcaddy build --with github.com/o-o-o-o-o/caddy-hot-reloader=.
 ```
 
 3. Use the newly built local binary (`./caddy`) for dev, or replace your existing binary if you prefer.
@@ -238,7 +238,7 @@ Plugin Components:
 1. Build Caddy with the plugin:
 
 ```bash
-xcaddy build --with github.com/yourusername/caddy-hot-reloader=./
+xcaddy build --with github.com/o-o-o-o-o/caddy-hot-reloader=./
 ```
 
 2. Run with your Caddyfile:
@@ -425,12 +425,11 @@ caddy version
 
 If you're maintaining the Homebrew tap:
 
-1. **Create tap repository** on GitHub named `homebrew-caddy-hot-reloader`
-2. **Copy Formula** file to `Formula/caddy-hot-reloader.rb` in the tap repo
-3. **Tag releases** in this plugin repo (e.g., `v1.0.0`)
-4. **GitHub Actions** will automatically create PRs to update the formula
-5. **Dependabot** monitors dependencies weekly and creates PRs for Go module updates
-6. **Test locally** before publishing:
+1. **Use this repository as the tap source** (it already contains `Formula/caddy-hot-reloader.rb`)
+2. **Tag releases** in this repo (e.g., `v1.0.0`)
+3. **GitHub Actions** can auto-update formula metadata for new tags
+4. **Dependabot** monitors dependencies weekly and creates PRs for Go module updates
+5. **Test locally** before publishing:
    ```bash
    brew install --build-from-source ./Formula/caddy-hot-reloader.rb
    brew test caddy-hot-reloader
@@ -484,7 +483,7 @@ Or reduce watched directories with more specific patterns.
 
 ## Disclaimer
 
-🤖Implemented
+🤖🧞🪄 Implemented
 
 ## License
 
