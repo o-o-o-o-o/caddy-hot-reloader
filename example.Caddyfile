@@ -1,0 +1,62 @@
+{
+	# Enable debug logging to see hot reload activity
+	log {
+		level DEBUG
+	}
+}
+
+# Reusable snippet for on-demand internal TLS
+(tls_local) {
+	tls internal {
+		on_demand
+	}
+}
+
+# Index page listing all test sites
+index.local {
+	tls internal
+	root "/path/to/your/test/sites"
+	file_server {
+		browse
+	}
+	encode gzip
+}
+
+# Individual test site subdomain listing
+*.index.local {
+	import tls_local
+	root "/path/to/your/test/sites/{labels.2}"
+	file_server {
+		browse
+	}
+	header Access-Control-Allow-Origin "https://index.local"
+	encode gzip
+}
+
+# Actual test sites with hot reload enabled
+*.*.local {
+	import tls_local
+	
+	# Hot reloader with default Kirby CMS settings
+	hot_reloader {
+		# Optional: customize these if needed
+		# base_dir "/path/to/your/test/sites"
+		# watch "site/**" "assets/**" "content/**"
+		# exclude "site/cache/**"
+		# extensions "html" "css" "js" "php" "scss" "sass"
+		# respect_gitignore true
+	}
+	
+	root "/path/to/your/test/sites/{labels.2}/{labels.1}/www"
+	file_server
+	encode gzip
+	
+	php_fastcgi 127.0.0.1:9000 {
+		dial_timeout 5s
+		read_timeout 30s
+	}
+	
+	handle_errors {
+		respond "{http.error.status_code} {http.error.status_text}"
+	}
+}

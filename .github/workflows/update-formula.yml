@@ -1,0 +1,70 @@
+name: Update Homebrew Formula
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to update formula to (e.g., v1.0.0)"
+        required: true
+
+jobs:
+  update-formula:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout formula repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get release info
+        id: release
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            VERSION="${{ github.event.release.tag_name }}"
+            URL="https://github.com/${{ github.repository }}/archive/refs/tags/${VERSION}.tar.gz"
+          else
+            VERSION="${{ github.event.inputs.version }}"
+            URL="https://github.com/${{ github.repository }}/archive/refs/tags/${VERSION}.tar.gz"
+          fi
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "url=${URL}" >> $GITHUB_OUTPUT
+
+      - name: Download and calculate SHA256
+        id: sha
+        run: |
+          curl -sL "${{ steps.release.outputs.url }}" -o release.tar.gz
+          SHA256=$(sha256sum release.tar.gz | awk '{print $1}')
+          echo "sha256=${SHA256}" >> $GITHUB_OUTPUT
+          rm release.tar.gz
+
+      - name: Update Formula
+        run: |
+          VERSION="${{ steps.release.outputs.version }}"
+          URL="${{ steps.release.outputs.url }}"
+          SHA256="${{ steps.sha.outputs.sha256 }}"
+
+          # Update version, url, and sha256 in formula
+          sed -i "s|url \".*\"|url \"${URL}\"|" Formula/caddy-hot-reloader.rb
+          sed -i "s|sha256 \".*\"|sha256 \"${SHA256}\"|" Formula/caddy-hot-reloader.rb
+
+          echo "Updated formula to ${VERSION}"
+          echo "URL: ${URL}"
+          echo "SHA256: ${SHA256}"
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: update formula to ${{ steps.release.outputs.version }}"
+          title: "Update formula to ${{ steps.release.outputs.version }}"
+          body: |
+            Automated update of Homebrew formula for release ${{ steps.release.outputs.version }}.
+
+            - Updated URL to ${{ steps.release.outputs.url }}
+            - Updated SHA256 to ${{ steps.sha.outputs.sha256 }}
+
+            Triggered by: ${{ github.event_name }}
+          branch: update-formula-${{ steps.release.outputs.version }}
+          delete-branch: true
