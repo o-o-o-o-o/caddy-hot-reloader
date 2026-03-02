@@ -5,7 +5,7 @@ go 1.21
 require (
 	github.com/caddyserver/caddy/v2 v2.7.6
 	github.com/fsnotify/fsnotify v1.7.0
-	github.com/gorilla/websocket v1.5.1
+	github.com/gorilla/websocket v1.5.3
 	github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06
 	go.uber.org/zap v1.25.0
 )
