@@ -4,8 +4,8 @@
 # Caddy with hot-reloader plugin for wildcard local development
 class CaddyHotReloader < Formula
   desc "Caddy web server with hot-reload plugin for wildcard local development"
-  homepage "https://github.com/yourusername/caddy-hot-reloader"
-  url "https://github.com/yourusername/caddy-hot-reloader/archive/refs/tags/v0.5.0.tar.gz"
+  homepage "https://github.com/o-o-o-o-o/caddy-hot-reloader"
+  url "https://github.com/o-o-o-o-o/caddy-hot-reloader/archive/refs/tags/v0.5.0.tar.gz"
   sha256 "9f404259abd1be315154f3f706aad42492ff0a7056e4b439d7994cf4c5f56815"
   license "Apache-2.0"
   head "https://github.com/o-o-o-o-o/caddy-hot-reloader.git", branch: "main"
@@ -16,7 +16,7 @@ class CaddyHotReloader < Formula
   def install
     # Build custom Caddy with hot-reloader plugin using xcaddy
     system "xcaddy", "build",
-           "--with", "github.com/yourusername/caddy-hot-reloader=#{buildpath}",
+           "--with", "github.com/o-o-o-o-o/caddy-hot-reloader=#{buildpath}",
            "--output", "#{bin}/caddy"
 
     # Install example Caddyfile
