@@ -18,9 +18,9 @@ class CaddyHotReloader < Formula
            "--with", "github.com/o-o-o-o-o/caddy-hot-reloader=#{buildpath}",
            "--output", "#{bin}/caddy"
 
-    # Install example Caddyfile
-    etc.install "Caddyfile" => "Caddyfile.example" if File.exist?("Caddyfile")
-    etc.install "example.Caddyfile" => "Caddyfile.example" if File.exist?("example.Caddyfile") && !File.exist?("Caddyfile")
+    # Install example Caddyfile to /opt/homebrew/etc (not in formula subdirectory)
+    (HOMEBREW_PREFIX/"etc").install "Caddyfile" => "Caddyfile.example" if File.exist?("Caddyfile")
+    (HOMEBREW_PREFIX/"etc").install "example.Caddyfile" => "Caddyfile.example" if File.exist?("example.Caddyfile") && !File.exist?("Caddyfile")
 
     # Create data directory
     (var/"lib/caddy-hot-reloader").mkpath
