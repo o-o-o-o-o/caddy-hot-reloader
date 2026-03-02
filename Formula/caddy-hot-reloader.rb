@@ -18,14 +18,6 @@ class CaddyHotReloader < Formula
            "--with", "github.com/o-o-o-o-o/caddy-hot-reloader=#{buildpath}",
            "--output", "#{bin}/caddy"
 
-    # Create wrapper script to pass config path to service
-    wrapper = bin/"caddy-wrapper"
-    wrapper.write <<~WRAPPER
-      #!/bin/bash
-      exec "#{opt_bin}/caddy" run --config "#{HOMEBREW_PREFIX}/etc/Caddyfile"
-    WRAPPER
-    wrapper.chmod 0o755
-
     # Install example Caddyfile to /opt/homebrew/etc (not in formula subdirectory)
     (HOMEBREW_PREFIX/"etc").install "Caddyfile" => "Caddyfile.example" if File.exist?("Caddyfile")
     (HOMEBREW_PREFIX/"etc").install "example.Caddyfile" => "Caddyfile.example" if File.exist?("example.Caddyfile") && !File.exist?("Caddyfile")
@@ -35,7 +27,7 @@ class CaddyHotReloader < Formula
   end
 
   service do
-    run opt_bin/"caddy-wrapper"
+    run [opt_bin/"caddy", "run", "--config", "#{HOMEBREW_PREFIX}/etc/Caddyfile"]
     working_dir var/"lib/caddy-hot-reloader"
     keep_alive true
     log_path var/"log/caddy-hot-reloader.log"
