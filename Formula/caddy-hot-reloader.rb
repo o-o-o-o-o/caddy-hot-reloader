@@ -19,15 +19,15 @@ class CaddyHotReloader < Formula
            "--output", "#{bin}/caddy"
 
     # Install example Caddyfile
-    (etc/"caddy-hot-reloader").install "Caddyfile" => "Caddyfile.example" if File.exist?("Caddyfile")
-    (etc/"caddy-hot-reloader").install "example.Caddyfile" if File.exist?("example.Caddyfile")
+    etc.install "Caddyfile" => "Caddyfile.example" if File.exist?("Caddyfile")
+    etc.install "example.Caddyfile" => "Caddyfile.example" if File.exist?("example.Caddyfile") && !File.exist?("Caddyfile")
 
     # Create data directory
     (var/"lib/caddy-hot-reloader").mkpath
   end
 
   service do
-    run [opt_bin/"caddy", "run", "--config", etc/"caddy-hot-reloader/Caddyfile"]
+    run opt_bin/"caddy", "run", "--config", "#{etc}/Caddyfile"
     working_dir var/"lib/caddy-hot-reloader"
     keep_alive true
     log_path var/"log/caddy-hot-reloader.log"
@@ -38,24 +38,30 @@ class CaddyHotReloader < Formula
     <<~EOS
       Caddy with hot-reloader plugin has been installed as 'caddy'.
 
-      To use it, you need to configure a Caddyfile:
-        cp #{etc}/caddy-hot-reloader/Caddyfile.example #{etc}/caddy-hot-reloader/Caddyfile
-        
-      Then edit #{etc}/caddy-hot-reloader/Caddyfile to match your setup.
-
-      To start the service:
+      QUICK START:
+        cp #{etc}/Caddyfile.example #{etc}/Caddyfile
         brew services start caddy-hot-reloader
 
-      To test manually:
-        caddy run --config #{etc}/caddy-hot-reloader/Caddyfile
+      CUSTOM CADDYFILE LOCATION (2 options):
 
-      Logs are available at:
-        #{var}/log/caddy-hot-reloader.log
+      Option 1: Symlink your Caddyfile to the default location:
+        ln -sf /path/to/your/Caddyfile #{etc}/Caddyfile
+        brew services restart caddy-hot-reloader
 
-      Note: This installs as 'caddy' and will conflict with the official
-      Homebrew Caddy formula. If you have both installed, use full paths:
-        #{opt_bin}/caddy (this version with hot-reloader)
-        /opt/homebrew/bin/caddy (official Caddy, if installed)
+      Option 2: Run manually with custom path (without service):
+        #{opt_bin}/caddy run --config /path/to/your/Caddyfile
+
+      AVAILABLE COMMANDS:
+        Start service:  brew services start caddy-hot-reloader
+        Stop service:   brew services stop caddy-hot-reloader
+        Restart:        brew services restart caddy-hot-reloader
+        Logs:           #{var}/log/caddy-hot-reloader.log
+
+      CONFLICT NOTE:
+      This installs as 'caddy' and may conflict with official Homebrew Caddy.
+      Use full path if both are installed: #{opt_bin}/caddy
+
+      For more info visit: https://github.com/o-o-o-o-o/caddy-hot-reloader
     EOS
   end
 
