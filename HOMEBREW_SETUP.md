@@ -16,6 +16,7 @@ brew install caddy-hot-reloader
 ### 1. Use This Repository as Tap Source
 
 This repository already contains:
+
 - `Formula/caddy-hot-reloader.rb`
 - `.github/workflows/update-formula.yml`
 
@@ -23,7 +24,7 @@ No separate `homebrew-*` repository is required.
 
 ### 2. Clone and Setup
 
-````bash
+```bash
 git clone https://github.com/o-o-o-o-o/caddy-hot-reloader
 cd caddy-hot-reloader
 
@@ -32,7 +33,7 @@ git add Formula/caddy-hot-reloader.rb .github/workflows/update-formula.yml
 git commit -m "Add Homebrew formula and update workflow"
 git push origin main
 
-````
+```
 
 ### 3. Create First Release
 
@@ -44,7 +45,7 @@ cd /path/to/caddy-hot-reloader
 # Tag a release
 git tag -a v1.0.0 -m "Initial release"
 git push origin v1.0.0
-````
+```
 
 This will trigger a GitHub Release.
 
@@ -202,10 +203,10 @@ brew audit --strict --online caddy-hot-reloader
    brew install --verbose --debug caddy-hot-reloader
    ```
 
-2. Verify xcaddy is available:
+2. Verify Go is available (formula builds xcaddy via `go run`):
 
    ```bash
-   brew install xcaddy
+   brew install go
    ```
 
 3. Test formula syntax:

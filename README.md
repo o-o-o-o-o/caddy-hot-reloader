@@ -33,19 +33,27 @@ Compared to common alternatives:
 
 Tradeoff: this is a **compile-time Caddy module**, so you build a custom Caddy binary with `xcaddy`.
 
-## Homebrew Caddy Coexistence (No Uninstall Needed)
+## Homebrew Caddy Coexistence (Installed Together, One Linked at a Time)
 
-You do **not** need to uninstall Homebrew Caddy.
+You do **not** have to uninstall Homebrew Caddy, but there is one important limit:
 
-- Homebrew Caddy is a prebuilt binary without this custom module
-- This plugin requires a custom-built Caddy binary
-- You can keep both installed and choose which one to run
+- Both formulas install a binary named `caddy`
+- Homebrew can only link one of them to `/opt/homebrew/bin/caddy` at a time
+- You can keep both installed and choose which one is active
 
-Recommended local-dev workflow:
+Recommended workflow:
 
-1. Keep Brew Caddy installed
-2. Build plugin-enabled Caddy with `xcaddy`
-3. Run the custom binary for your dev wildcard setup
+1. Keep both installed
+2. Unlink official Caddy when using hot-reloader build:
+   ```bash
+   brew unlink caddy
+   brew link --overwrite caddy-hot-reloader
+   ```
+3. Switch back when needed:
+   ```bash
+   brew unlink caddy-hot-reloader
+   brew link caddy
+   ```
 
 Service management notes:
 
@@ -67,7 +75,7 @@ brew services stop caddy
 brew services start caddy
 ```
 
-In short: keep Brew for package management/updates, use the custom binary when you need `hot_reloader`.
+In short: both can coexist as installed packages, but only one `caddy` can be active on PATH at a time.
 
 ## Installation
 
@@ -81,6 +89,10 @@ brew tap o-o-o-o-o/caddy-hot-reloader https://github.com/o-o-o-o-o/caddy-hot-rel
 
 # Install
 brew install caddy-hot-reloader
+
+# If official caddy is installed, switch the active symlink:
+brew unlink caddy
+brew link --overwrite caddy-hot-reloader
 
 # Copy and configure the Caddyfile
 cp $(brew --prefix)/etc/caddy-hot-reloader/Caddyfile.example \
