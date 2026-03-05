@@ -137,8 +137,9 @@ func (fw *FileWatcher) setupWatches() error {
 	}
 
 	// As fallback, watch the base directory itself (if it exists) so we detect when subdirs are created
+	// This allows flexible watching regardless of project structure
 	if watchedCount == 0 {
-		fw.logger.Info("no pattern directories found, watching base directory for dynamic creation",
+		fw.logger.Info("watching entire base directory (no pattern directories found or no patterns specified)",
 			zap.String("basePath", fw.basePath),
 		)
 		if err := fw.watcher.Add(fw.basePath); err != nil {

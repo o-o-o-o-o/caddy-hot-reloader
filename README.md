@@ -12,7 +12,7 @@ A Caddy build that provides hot-reloading functionality for local development, w
 - **Request-Time Discovery**: Automatically detects and watches sites as they're accessed
 - **Smart Filtering**: Respects `.gitignore` and allows explicit exclude patterns
 - **Efficient Watching**: Uses `fsnotify` for event-driven file watching (not polling)
-- **Zero Configuration**: Works out of the box with sensible defaults for Kirby CMS
+- **Highly Configurable**: Control watch patterns, file extensions, timeouts, and more via Caddyfile
 - **Debug Logging**: Comprehensive logging for troubleshooting
 
 ## Why This Approach (vs Alternatives)
@@ -159,14 +159,14 @@ xcaddy build --with github.com/o-o-o-o-o/caddy-hot-reloader=.
 
 **Defaults:**
 
-- Base directory: `/Users/why/Test Sites`
-- Watch patterns: `site/**`, `assets/**`, `content/**`
+- Base directory: Not set (only needed for domain-based auto-discovery with `base_dir`)
+- Watch patterns: Empty (watches entire site directory)
 - Exclude patterns: `**.cache`, `**/vendor/**`, `**/node_modules/**`, `**/.DS_Store`
-- File extensions: `html`, `css`, `js`, `php`, `scss`, `sass`
+- File extensions: Empty (all extensions trigger reload; configure to filter)
 - Respect `.gitignore`: `true`
 - Idle watcher shutdown: `30m` (configurable)
 
-### Custom Configuration
+### Configuration Examples
 
 ```caddy
 *.*.why {

@@ -50,17 +50,14 @@ func (h *HotReloader) Provision(ctx caddy.Context) error {
 	h.logger = ctx.Logger(h)
 
 	// Set defaults
-	if h.BaseDir == "" {
-		h.BaseDir = "/Users/why/Test Sites"
-	}
 	if len(h.Watch) == 0 {
-		h.Watch = []string{"site/**", "assets/**", "content/**"}
+		h.Watch = []string{}  // Empty = watch entire base directory (more flexible)
 	}
 	if len(h.Exclude) == 0 {
 		h.Exclude = []string{"**.cache", "**/vendor/**", "**/node_modules/**", "**/.DS_Store"}
 	}
 	if len(h.Extensions) == 0 {
-		h.Extensions = []string{"html", "css", "js", "php", "scss", "sass"}
+		h.Extensions = []string{}  // Empty = all extensions trigger reload
 	}
 	if !h.RespectGitignore {
 		h.RespectGitignore = true // default to true
@@ -85,6 +82,12 @@ func (h *HotReloader) Provision(ctx caddy.Context) error {
 	h.logger.Info("hot_reloader initialized",
 		zap.String("base_dir", h.BaseDir),
 		zap.Strings("watch", h.Watch),
+		zap.String("watch_behavior", func() string {
+			if len(h.Watch) == 0 {
+				return "watching entire directory (no patterns specified)"
+			}
+			return "watching specific patterns"
+		}()),
 		zap.Strings("exclude", h.Exclude),
 		zap.Strings("extensions", h.Extensions),
 		zap.Bool("respect_gitignore", h.RespectGitignore),
@@ -96,9 +99,8 @@ func (h *HotReloader) Provision(ctx caddy.Context) error {
 
 // Validate validates the configuration
 func (h *HotReloader) Validate() error {
-	if h.BaseDir == "" {
-		return fmt.Errorf("base_dir is required")
-	}
+	// base_dir is optional - only needed if using domain-based site discovery
+	// Users providing explicit roots in Caddyfile don't need it
 	return nil
 }
 
@@ -139,28 +141,30 @@ func (h *HotReloader) ServeHTTP(w http.ResponseWriter, r *http.Request, next cad
 	return next.ServeHTTP(wrapper, r)
 }
 
-// discoverSite extracts site path from domain using *.*.why pattern
-// Example: test.laac-acc.why -> /Users/why/Test Sites/test/laac-acc/www
+// discoverSite extracts site path from domain using *.*.domain pattern and base_dir
+// Example: test.subdomain.example.com -> /path/to/sites/test/subdomain/www
+// Returns empty string if base_dir is not set or domain doesn't match pattern
 func (h *HotReloader) discoverSite(host string) string {
-	// Remove port if present
-	host = strings.Split(host, ":")[0]
-
-	// Check if matches *.*.why pattern
-	if !strings.HasSuffix(host, ".why") {
+	// base_dir is required for this feature
+	if h.BaseDir == "" {
 		return ""
 	}
+
+	// Remove port if present
+	host = strings.Split(host, ":")[0]
 
 	// Split by dots
 	parts := strings.Split(host, ".")
 	if len(parts) < 3 {
+		// Only process multi-level subdomains
 		return ""
 	}
 
-	// Extract labels: test.laac-acc.why -> parts[0]=test, parts[1]=laac-acc
-	label1 := parts[0] // test
-	label2 := parts[1] // laac-acc
+	// Extract labels: test.subdomain.example.com -> parts[0]=test, parts[1]=subdomain
+	label1 := parts[0]
+	label2 := parts[1]
 
-	// Construct path: /Users/why/Test Sites/{label1}/{label2}/www
+	// Construct path: {base_dir}/{label1}/{label2}/www
 	sitePath := filepath.Join(h.BaseDir, label1, label2, "www")
 
 	return sitePath
