@@ -22,8 +22,9 @@ class CaddyHotReloader < Formula
     (HOMEBREW_PREFIX/"etc").install "Caddyfile" => "Caddyfile.example" if File.exist?("Caddyfile")
     (HOMEBREW_PREFIX/"etc").install "example.Caddyfile" => "Caddyfile.example" if File.exist?("example.Caddyfile") && !File.exist?("Caddyfile")
 
-    # Create data directory
+    # Create data and log directories for service startup
     (var/"lib/caddy-hot-reloader").mkpath
+    (var/"log").mkpath
   end
 
   service do
@@ -37,6 +38,13 @@ class CaddyHotReloader < Formula
   def caveats
     <<~EOS
       Caddy with hot-reloader plugin has been installed as 'caddy'.
+
+      ⚠️  IMPORTANT FOR BOOT STARTUP:
+      Before using 'brew services start', ensure a Caddyfile exists at:
+        #{HOMEBREW_PREFIX}/etc/Caddyfile
+      If missing, the service will fail at boot. Copy the example:
+        cp #{etc}/Caddyfile.example #{etc}/Caddyfile
+        nano #{etc}/Caddyfile  # Edit with your configuration
 
       QUICK START:
         cp #{etc}/Caddyfile.example #{etc}/Caddyfile
@@ -55,7 +63,14 @@ class CaddyHotReloader < Formula
         Start service:  brew services start caddy-hot-reloader
         Stop service:   brew services stop caddy-hot-reloader
         Restart:        brew services restart caddy-hot-reloader
-        Logs:           #{var}/log/caddy-hot-reloader.log
+        Logs:           tail -f #{var}/log/caddy-hot-reloader.log
+        Status:         brew services list
+
+      TROUBLESHOOTING:
+      If service fails at boot but works manually:
+        1. Check logs: tail -f #{var}/log/caddy-hot-reloader.log
+        2. Verify Caddyfile exists: ls -l #{etc}/Caddyfile
+        3. Reinstall service: brew services stop caddy-hot-reloader && brew services start caddy-hot-reloader
 
       CONFLICT NOTE:
       This installs as 'caddy' and may conflict with official Homebrew Caddy.
