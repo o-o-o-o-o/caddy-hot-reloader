@@ -2,6 +2,7 @@ package hotreloader
 
 import (
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -121,6 +122,10 @@ func (h *HotReloader) ServeHTTP(w http.ResponseWriter, r *http.Request, next cad
 
 	// Discover site from request (request-time discovery)
 	sitePath := h.discoverSite(r.Host)
+	if sitePath == "" {
+		// Fallback: derive site path from the effective request root when base_dir is not configured.
+		sitePath = h.discoverSiteFromRequest(r)
+	}
 	if sitePath != "" {
 		h.manager.EnsureSiteWatched(r.Host, sitePath)
 	}
@@ -167,6 +172,35 @@ func (h *HotReloader) discoverSite(host string) string {
 	sitePath := filepath.Join(h.BaseDir, label1, label2, "www")
 
 	return sitePath
+}
+
+// discoverSiteFromRequest extracts site path from the effective request root.
+// This enables hot-reload watching when users configure `root` in Caddyfile and omit base_dir.
+func (h *HotReloader) discoverSiteFromRequest(r *http.Request) string {
+	repl, ok := r.Context().Value(caddy.ReplacerCtxKey).(*caddy.Replacer)
+	if !ok || repl == nil {
+		return ""
+	}
+
+	root := strings.TrimSpace(repl.ReplaceAll("{http.vars.root}", ""))
+	if root == "" || root == "{http.vars.root}" {
+		return ""
+	}
+
+	cleanRoot := filepath.Clean(root)
+	if !filepath.IsAbs(cleanRoot) {
+		absRoot, err := filepath.Abs(cleanRoot)
+		if err != nil {
+			return ""
+		}
+		cleanRoot = absRoot
+	}
+
+	if info, err := os.Stat(cleanRoot); err != nil || !info.IsDir() {
+		return ""
+	}
+
+	return cleanRoot
 }
 
 // handleWebSocket handles WebSocket connections for hot reload
