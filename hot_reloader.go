@@ -276,25 +276,18 @@ func (rw *responseWrapper) Flush() {
 			rw.ResponseWriter.WriteHeader(rw.statusCode)
 			rw.ResponseWriter.Write([]byte(injected))
 		} else {
-			// No </body> found, write as-is
-			rw.hotReloader.logger.Debug("no </body> tag found, writing original response",
-				zap.String("host", rw.host),
-				zap.Int("size", len(rw.buffer)))
-			rw.ResponseWriter.WriteHeader(rw.statusCode)
-			rw.ResponseWriter.Write(rw.buffer)
-		}
-	} else if rw.shouldInject && len(rw.buffer) == 0 {
-		if rw.method == http.MethodHead {
-			return
-		}
-		// We were supposed to inject but buffer is empty - this is an error case
-		rw.hotReloader.logger.Warn("expected to inject script but buffer is empty",
-			zap.String("host", rw.host))
-	}
-	// If !shouldInject, the response was already written directly (non-HTML responses)
-}
+		// No </body> found, append diagnostic console error
+		rw.hotReloader.logger.Warn("no </body> tag found, appending diagnostic script",
+			zap.String("host", rw.host),
+			zap.Int("size", len(rw.buffer)))
 
-// parseCaddyfile unmarshals tokens from Caddyfile into the module config
+		diagnosticScript := `<script>console.error("[Caddy Hot Reload] Failed to inject script: no closing </body> tag found. Check server HTML output.");</script>`
+		injected := string(rw.buffer) + diagnosticScript
+
+		rw.ResponseWriter.WriteHeader(rw.statusCode)
+		rw.ResponseWriter.Write([]byte(injected))
+	}
+}
 func parseCaddyfile(h httpcaddyfile.Helper) (caddyhttp.MiddlewareHandler, error) {
 	var hr HotReloader
 	err := hr.UnmarshalCaddyfile(h.Dispenser)
