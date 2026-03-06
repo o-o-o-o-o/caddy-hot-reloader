@@ -12,7 +12,7 @@ A Caddy build that provides hot-reloading functionality for local development, w
 - **Request-Time Discovery**: Automatically detects and watches sites as they're accessed
 - **Smart Filtering**: Respects `.gitignore` and allows explicit exclude patterns
 - **Efficient Watching**: Uses `fsnotify` for event-driven file watching (not polling)
-- **Zero Configuration**: Works out of the box with sensible defaults for Kirby CMS
+- **Highly Configurable**: Control watch patterns, file extensions, timeouts, and more via Caddyfile
 - **Debug Logging**: Comprehensive logging for troubleshooting
 
 ## Why This Approach (vs Alternatives)
@@ -33,19 +33,27 @@ Compared to common alternatives:
 
 Tradeoff: this is a **compile-time Caddy module**, so you build a custom Caddy binary with `xcaddy`.
 
-## Homebrew Caddy Coexistence (No Uninstall Needed)
+## Homebrew Caddy Coexistence (Installed Together, One Linked at a Time)
 
-You do **not** need to uninstall Homebrew Caddy.
+You do **not** have to uninstall Homebrew Caddy, but there is one important limit:
 
-- Homebrew Caddy is a prebuilt binary without this custom module
-- This plugin requires a custom-built Caddy binary
-- You can keep both installed and choose which one to run
+- Both formulas install a binary named `caddy`
+- Homebrew can only link one of them to `/opt/homebrew/bin/caddy` at a time
+- You can keep both installed and choose which one is active
 
-Recommended local-dev workflow:
+Recommended workflow:
 
-1. Keep Brew Caddy installed
-2. Build plugin-enabled Caddy with `xcaddy`
-3. Run the custom binary for your dev wildcard setup
+1. Keep both installed
+2. Unlink official Caddy when using hot-reloader build:
+   ```bash
+   brew unlink caddy
+   brew link --overwrite caddy-hot-reloader
+   ```
+3. Switch back when needed:
+   ```bash
+   brew unlink caddy-hot-reloader
+   brew link caddy
+   ```
 
 Service management notes:
 
@@ -67,7 +75,7 @@ brew services stop caddy
 brew services start caddy
 ```
 
-In short: keep Brew for package management/updates, use the custom binary when you need `hot_reloader`.
+In short: both can coexist as installed packages, but only one `caddy` can be active on PATH at a time.
 
 ## Installation
 
@@ -77,10 +85,14 @@ The easiest way to install and manage Caddy with hot-reloader:
 
 ```bash
 # Add the tap
-brew tap yourusername/caddy-hot-reloader
+brew tap o-o-o-o-o/caddy-hot-reloader https://github.com/o-o-o-o-o/caddy-hot-reloader
 
 # Install
 brew install caddy-hot-reloader
+
+# If official caddy is installed, switch the active symlink:
+brew unlink caddy
+brew link --overwrite caddy-hot-reloader
 
 # Copy and configure the Caddyfile
 cp $(brew --prefix)/etc/caddy-hot-reloader/Caddyfile.example \
@@ -120,14 +132,14 @@ For development or if you want to modify the plugin:
 1. Clone this repository:
 
 ```bash
-git clone https://github.com/yourusername/caddy-hot-reloader
+git clone https://github.com/o-o-o-o-o/caddy-hot-reloader
 cd caddy-hot-reloader
 ```
 
 2. Build Caddy with the plugin using `xcaddy`:
 
 ```bash
-xcaddy build --with github.com/yourusername/caddy-hot-reloader=.
+xcaddy build --with github.com/o-o-o-o-o/caddy-hot-reloader=.
 ```
 
 3. Use the newly built local binary (`./caddy`) for dev, or replace your existing binary if you prefer.
@@ -147,14 +159,14 @@ xcaddy build --with github.com/yourusername/caddy-hot-reloader=.
 
 **Defaults:**
 
-- Base directory: `/Users/why/Test Sites`
-- Watch patterns: `site/**`, `assets/**`, `content/**`
+- Base directory: Not set (only needed for domain-based auto-discovery with `base_dir`)
+- Watch patterns: Empty (watches entire site directory)
 - Exclude patterns: `**.cache`, `**/vendor/**`, `**/node_modules/**`, `**/.DS_Store`
-- File extensions: `html`, `css`, `js`, `php`, `scss`, `sass`
+- File extensions: Empty (all extensions trigger reload; configure to filter)
 - Respect `.gitignore`: `true`
 - Idle watcher shutdown: `30m` (configurable)
 
-### Custom Configuration
+### Configuration Examples
 
 ```caddy
 *.*.why {
@@ -238,7 +250,7 @@ Plugin Components:
 1. Build Caddy with the plugin:
 
 ```bash
-xcaddy build --with github.com/yourusername/caddy-hot-reloader=./
+xcaddy build --with github.com/o-o-o-o-o/caddy-hot-reloader=./
 ```
 
 2. Run with your Caddyfile:
@@ -425,12 +437,11 @@ caddy version
 
 If you're maintaining the Homebrew tap:
 
-1. **Create tap repository** on GitHub named `homebrew-caddy-hot-reloader`
-2. **Copy Formula** file to `Formula/caddy-hot-reloader.rb` in the tap repo
-3. **Tag releases** in this plugin repo (e.g., `v1.0.0`)
-4. **GitHub Actions** will automatically create PRs to update the formula
-5. **Dependabot** monitors dependencies weekly and creates PRs for Go module updates
-6. **Test locally** before publishing:
+1. **Use this repository as the tap source** (it already contains `Formula/caddy-hot-reloader.rb`)
+2. **Tag releases** in this repo (e.g., `v1.0.0`)
+3. **GitHub Actions** can auto-update formula metadata for new tags
+4. **Dependabot** monitors dependencies weekly and creates PRs for Go module updates
+5. **Test locally** before publishing:
    ```bash
    brew install --build-from-source ./Formula/caddy-hot-reloader.rb
    brew test caddy-hot-reloader
@@ -484,7 +495,7 @@ Or reduce watched directories with more specific patterns.
 
 ## Disclaimer
 
-🤖Implemented
+🤖🧞🪄 Implemented
 
 ## License
 
