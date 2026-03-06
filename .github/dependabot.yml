@@ -1,13 +1,21 @@
 version: 2
 updates:
-  # Monitor Go module dependencies
   - package-ecosystem: "gomod"
     directory: "/"
     schedule:
       interval: "weekly"
       day: "monday"
       time: "09:00"
-    open-pull-requests-limit: 5
+      timezone: "UTC"
+    open-pull-requests-limit: 10
+    groups:
+      go-deps:
+        patterns:
+          - "*"
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
     commit-message:
       prefix: "deps"
       include: "scope"
@@ -17,14 +25,18 @@ updates:
     reviewers:
       - "o-o-o-o-o"
 
-  # Monitor GitHub Actions dependencies
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
       day: "monday"
-      time: "09:00"
-    open-pull-requests-limit: 3
+      time: "09:15"
+      timezone: "UTC"
+    open-pull-requests-limit: 10
+    groups:
+      github-actions:
+        patterns:
+          - "*"
     commit-message:
       prefix: "ci"
     labels:
