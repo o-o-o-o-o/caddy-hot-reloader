@@ -93,8 +93,10 @@ class CaddyHotReloader < Formula
         admin off
       }
       :8080 {
-        hot_reloader
-        respond "OK"
+        route {
+          hot_reloader
+          respond "OK"
+        }
       }
     EOS
 
