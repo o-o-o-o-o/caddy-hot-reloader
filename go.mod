@@ -1,4 +1,4 @@
-module github.com/yourusername/caddy-hot-reloader
+module github.com/o-o-o-o-o/caddy-hot-reloader
 
 go 1.21
 

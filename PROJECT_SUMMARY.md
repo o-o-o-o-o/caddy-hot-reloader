@@ -56,7 +56,7 @@ A Caddy v2 module that provides hot-reloading for wildcard local development sit
 ### Path 1: Homebrew Tap (Recommended for End Users)
 
 ```bash
-brew tap yourusername/caddy-hot-reloader
+brew tap o-o-o-o-o/caddy-hot-reloader https://github.com/o-o-o-o-o/caddy-hot-reloader
 brew install caddy-hot-reloader
 brew services start caddy-hot-reloader
 ```
@@ -134,18 +134,6 @@ Build dependencies:
 
 - xcaddy (for building custom Caddy)
 
-## Placeholder Note
-
-All references to `yourusername` in code/docs are placeholders and should be replaced with your actual GitHub username when setting up:
-
-Files containing `yourusername`:
-
-- README.md (multiple references)
-- build.sh
-- go.mod
-- Formula/caddy-hot-reloader.rb
-- HOMEBREW_SETUP.md
-
 ## Testing Checklist
 
 - [x] Core functionality (reload on file change)
@@ -160,9 +148,9 @@ Files containing `yourusername`:
 
 ## Distribution Roadmap
 
-1. **Setup Homebrew Tap Repository**
-   - Create `homebrew-caddy-hot-reloader` on GitHub
-   - Copy Formula and GitHub Actions workflow
+1. **Use This Repo as Homebrew Tap Source**
+   - Keep `Formula/caddy-hot-reloader.rb` in this repository
+   - Keep `.github/workflows/update-formula.yml` in this repository
    - Follow HOMEBREW_SETUP.md
 
 2. **Tag First Release**
@@ -171,7 +159,7 @@ Files containing `yourusername`:
    - Update formula with correct URL and SHA256
 
 3. **Test Installation**
-   - `brew tap yourusername/caddy-hot-reloader`
+   - `brew tap o-o-o-o-o/caddy-hot-reloader https://github.com/o-o-o-o-o/caddy-hot-reloader`
    - `brew install caddy-hot-reloader`
    - Verify service starts and hot-reload works
 
