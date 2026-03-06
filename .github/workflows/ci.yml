@@ -33,11 +33,11 @@ jobs:
       - name: Brew style
         run: brew style Formula/caddy-hot-reloader.rb
 
-      - name: Brew audit
-        run: brew audit --strict --online Formula/caddy-hot-reloader.rb
-
       - name: Build and install formula
         run: brew install --build-from-source ./Formula/caddy-hot-reloader.rb
+
+      - name: Brew audit
+        run: brew audit --strict --online caddy-hot-reloader
 
       - name: Formula runtime test
         run: brew test caddy-hot-reloader
