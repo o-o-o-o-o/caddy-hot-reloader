@@ -13,14 +13,17 @@ class CaddyHotReloader < Formula
   depends_on "go" => :build
 
   def install
-    # Build custom Caddy with hot-reloader plugin using xcaddy
-    system "go", "run", "github.com/caddyserver/xcaddy/cmd/xcaddy@latest", "build",
+    # Build custom Caddy with hot-reloader plugin using pinned xcaddy.
+    # Pinning avoids non-reproducible builds caused by upstream latest changes.
+    system "go", "run", "github.com/caddyserver/xcaddy/cmd/xcaddy@v0.4.2", "build",
            "--with", "github.com/o-o-o-o-o/caddy-hot-reloader=#{buildpath}",
            "--output", "#{bin}/caddy"
 
     # Install example Caddyfile to /opt/homebrew/etc (not in formula subdirectory)
     (HOMEBREW_PREFIX/"etc").install "Caddyfile" => "Caddyfile.example" if File.exist?("Caddyfile")
-    (HOMEBREW_PREFIX/"etc").install "example.Caddyfile" => "Caddyfile.example" if File.exist?("example.Caddyfile") && !File.exist?("Caddyfile")
+    if File.exist?("example.Caddyfile") && !File.exist?("Caddyfile")
+      (HOMEBREW_PREFIX/"etc").install "example.Caddyfile" => "Caddyfile.example"
+    end
 
     # Create data and log directories for service startup
     (var/"lib/caddy-hot-reloader").mkpath
@@ -83,18 +86,20 @@ class CaddyHotReloader < Formula
   test do
     output = shell_output("#{bin}/caddy version")
     assert_match "v2", output
-    
+
     # Test that the hot_reloader module is available
     (testpath/"Caddyfile").write <<~EOS
       {
         admin off
       }
       :8080 {
-        hot_reloader
-        respond "OK"
+        route {
+          hot_reloader
+          respond "OK"
+        }
       }
     EOS
-    
+
     system bin/"caddy", "adapt", "--config", testpath/"Caddyfile"
   end
 end
