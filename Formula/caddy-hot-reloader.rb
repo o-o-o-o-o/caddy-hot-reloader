@@ -13,8 +13,9 @@ class CaddyHotReloader < Formula
   depends_on "go" => :build
 
   def install
-    # Build custom Caddy with hot-reloader plugin using xcaddy
-    system "go", "run", "github.com/caddyserver/xcaddy/cmd/xcaddy@latest", "build",
+    # Build custom Caddy with hot-reloader plugin using pinned xcaddy.
+    # Pinning avoids non-reproducible builds caused by upstream latest changes.
+    system "go", "run", "github.com/caddyserver/xcaddy/cmd/xcaddy@v0.4.2", "build",
            "--with", "github.com/o-o-o-o-o/caddy-hot-reloader=#{buildpath}",
            "--output", "#{bin}/caddy"
 
