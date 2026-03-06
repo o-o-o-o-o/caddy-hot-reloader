@@ -1,0 +1,57 @@
+name: Test Build
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  test-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+
+      - name: Install xcaddy
+        run: go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
+
+      - name: Build Caddy with hot-reloader plugin
+        run: |
+          xcaddy build \
+            --with github.com/o-o-o-o-o/caddy-hot-reloader=${{ github.workspace }} \
+            --output ./caddy-test
+
+      - name: Verify build output
+        run: |
+          if [ ! -f ./caddy-test ]; then
+            echo "Build failed: caddy-test binary not created"
+            exit 1
+          fi
+          echo "✓ Build successful"
+          ./caddy-test version
+
+      - name: Lint Go files
+        run: |
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+          golangci-lint run ./... --timeout 5m
+        continue-on-error: true
+
+      - name: Run Go tests
+        run: go test ./...
+        continue-on-error: true
+
+      - name: Report build status
+        if: failure()
+        run: |
+          echo "❌ Build verification failed!"
+          echo "**Actions to take:**"
+          echo "- Fix compilation errors"
+          echo "- Run: go vet ./..."
+          echo "- Run: go fmt ./..."
+          exit 1

@@ -1,8 +1,8 @@
 package hotreloader
 
 import (
-	"fmt"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -50,17 +50,14 @@ func (h *HotReloader) Provision(ctx caddy.Context) error {
 	h.logger = ctx.Logger(h)
 
 	// Set defaults
-	if h.BaseDir == "" {
-		h.BaseDir = "/Users/why/Test Sites"
-	}
 	if len(h.Watch) == 0 {
-		h.Watch = []string{"site/**", "assets/**", "content/**"}
+		h.Watch = []string{}  // Empty = watch entire base directory (more flexible)
 	}
 	if len(h.Exclude) == 0 {
 		h.Exclude = []string{"**.cache", "**/vendor/**", "**/node_modules/**", "**/.DS_Store"}
 	}
 	if len(h.Extensions) == 0 {
-		h.Extensions = []string{"html", "css", "js", "php", "scss", "sass"}
+		h.Extensions = []string{}  // Empty = all extensions trigger reload
 	}
 	if !h.RespectGitignore {
 		h.RespectGitignore = true // default to true
@@ -85,6 +82,12 @@ func (h *HotReloader) Provision(ctx caddy.Context) error {
 	h.logger.Info("hot_reloader initialized",
 		zap.String("base_dir", h.BaseDir),
 		zap.Strings("watch", h.Watch),
+		zap.String("watch_behavior", func() string {
+			if len(h.Watch) == 0 {
+				return "watching entire directory (no patterns specified)"
+			}
+			return "watching specific patterns"
+		}()),
 		zap.Strings("exclude", h.Exclude),
 		zap.Strings("extensions", h.Extensions),
 		zap.Bool("respect_gitignore", h.RespectGitignore),
@@ -96,9 +99,8 @@ func (h *HotReloader) Provision(ctx caddy.Context) error {
 
 // Validate validates the configuration
 func (h *HotReloader) Validate() error {
-	if h.BaseDir == "" {
-		return fmt.Errorf("base_dir is required")
-	}
+	// base_dir is optional - only needed if using domain-based site discovery
+	// Users providing explicit roots in Caddyfile don't need it
 	return nil
 }
 
@@ -120,6 +122,10 @@ func (h *HotReloader) ServeHTTP(w http.ResponseWriter, r *http.Request, next cad
 
 	// Discover site from request (request-time discovery)
 	sitePath := h.discoverSite(r.Host)
+	if sitePath == "" {
+		// Fallback: derive site path from the effective request root when base_dir is not configured.
+		sitePath = h.discoverSiteFromRequest(r)
+	}
 	if sitePath != "" {
 		h.manager.EnsureSiteWatched(r.Host, sitePath)
 	}
@@ -139,31 +145,62 @@ func (h *HotReloader) ServeHTTP(w http.ResponseWriter, r *http.Request, next cad
 	return next.ServeHTTP(wrapper, r)
 }
 
-// discoverSite extracts site path from domain using *.*.why pattern
-// Example: test.laac-acc.why -> /Users/why/Test Sites/test/laac-acc/www
+// discoverSite extracts site path from domain using *.*.domain pattern and base_dir
+// Example: test.subdomain.example.com -> /path/to/sites/test/subdomain/www
+// Returns empty string if base_dir is not set or domain doesn't match pattern
 func (h *HotReloader) discoverSite(host string) string {
-	// Remove port if present
-	host = strings.Split(host, ":")[0]
-
-	// Check if matches *.*.why pattern
-	if !strings.HasSuffix(host, ".why") {
+	// base_dir is required for this feature
+	if h.BaseDir == "" {
 		return ""
 	}
+
+	// Remove port if present
+	host = strings.Split(host, ":")[0]
 
 	// Split by dots
 	parts := strings.Split(host, ".")
 	if len(parts) < 3 {
+		// Only process multi-level subdomains
 		return ""
 	}
 
-	// Extract labels: test.laac-acc.why -> parts[0]=test, parts[1]=laac-acc
-	label1 := parts[0] // test
-	label2 := parts[1] // laac-acc
+	// Extract labels: test.subdomain.example.com -> parts[0]=test, parts[1]=subdomain
+	label1 := parts[0]
+	label2 := parts[1]
 
-	// Construct path: /Users/why/Test Sites/{label1}/{label2}/www
+	// Construct path: {base_dir}/{label1}/{label2}/www
 	sitePath := filepath.Join(h.BaseDir, label1, label2, "www")
 
 	return sitePath
+}
+
+// discoverSiteFromRequest extracts site path from the effective request root.
+// This enables hot-reload watching when users configure `root` in Caddyfile and omit base_dir.
+func (h *HotReloader) discoverSiteFromRequest(r *http.Request) string {
+	repl, ok := r.Context().Value(caddy.ReplacerCtxKey).(*caddy.Replacer)
+	if !ok || repl == nil {
+		return ""
+	}
+
+	root := strings.TrimSpace(repl.ReplaceAll("{http.vars.root}", ""))
+	if root == "" || root == "{http.vars.root}" {
+		return ""
+	}
+
+	cleanRoot := filepath.Clean(root)
+	if !filepath.IsAbs(cleanRoot) {
+		absRoot, err := filepath.Abs(cleanRoot)
+		if err != nil {
+			return ""
+		}
+		cleanRoot = absRoot
+	}
+
+	if info, err := os.Stat(cleanRoot); err != nil || !info.IsDir() {
+		return ""
+	}
+
+	return cleanRoot
 }
 
 // handleWebSocket handles WebSocket connections for hot reload
@@ -239,25 +276,20 @@ func (rw *responseWrapper) Flush() {
 			rw.ResponseWriter.WriteHeader(rw.statusCode)
 			rw.ResponseWriter.Write([]byte(injected))
 		} else {
-			// No </body> found, write as-is
-			rw.hotReloader.logger.Debug("no </body> tag found, writing original response",
+			// No </body> found, append diagnostic console error
+			rw.hotReloader.logger.Warn("no </body> tag found, appending diagnostic script",
 				zap.String("host", rw.host),
 				zap.Int("size", len(rw.buffer)))
+
+			diagnosticScript := `<script>console.error("[Caddy Hot Reload] Failed to inject script: no closing </body> tag found. Check server HTML output.");</script>`
+			injected := string(rw.buffer) + diagnosticScript
+
 			rw.ResponseWriter.WriteHeader(rw.statusCode)
-			rw.ResponseWriter.Write(rw.buffer)
+			rw.ResponseWriter.Write([]byte(injected))
 		}
-	} else if rw.shouldInject && len(rw.buffer) == 0 {
-		if rw.method == http.MethodHead {
-			return
-		}
-		// We were supposed to inject but buffer is empty - this is an error case
-		rw.hotReloader.logger.Warn("expected to inject script but buffer is empty",
-			zap.String("host", rw.host))
 	}
-	// If !shouldInject, the response was already written directly (non-HTML responses)
 }
 
-// parseCaddyfile unmarshals tokens from Caddyfile into the module config
 func parseCaddyfile(h httpcaddyfile.Helper) (caddyhttp.MiddlewareHandler, error) {
 	var hr HotReloader
 	err := hr.UnmarshalCaddyfile(h.Dispenser)
