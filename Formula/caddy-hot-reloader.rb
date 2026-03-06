@@ -21,7 +21,9 @@ class CaddyHotReloader < Formula
 
     # Install example Caddyfile to /opt/homebrew/etc (not in formula subdirectory)
     (HOMEBREW_PREFIX/"etc").install "Caddyfile" => "Caddyfile.example" if File.exist?("Caddyfile")
-    (HOMEBREW_PREFIX/"etc").install "example.Caddyfile" => "Caddyfile.example" if File.exist?("example.Caddyfile") && !File.exist?("Caddyfile")
+    if File.exist?("example.Caddyfile") && !File.exist?("Caddyfile")
+      (HOMEBREW_PREFIX/"etc").install "example.Caddyfile" => "Caddyfile.example"
+    end
 
     # Create data and log directories for service startup
     (var/"lib/caddy-hot-reloader").mkpath
@@ -84,7 +86,7 @@ class CaddyHotReloader < Formula
   test do
     output = shell_output("#{bin}/caddy version")
     assert_match "v2", output
-    
+
     # Test that the hot_reloader module is available
     (testpath/"Caddyfile").write <<~EOS
       {
@@ -95,7 +97,7 @@ class CaddyHotReloader < Formula
         respond "OK"
       }
     EOS
-    
+
     system bin/"caddy", "adapt", "--config", testpath/"Caddyfile"
   end
 end
