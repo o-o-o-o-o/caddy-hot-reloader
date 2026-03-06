@@ -8,13 +8,17 @@ Get hot-reloading working in under 5 minutes.
 
 ```bash
 # Install
-brew tap yourusername/caddy-hot-reloader
+brew tap o-o-o-o-o/caddy-hot-reloader https://github.com/o-o-o-o-o/caddy-hot-reloader
 brew install caddy-hot-reloader
 
+# If install says /opt/homebrew/bin/caddy is owned by official caddy:
+brew unlink caddy
+brew link --overwrite caddy-hot-reloader
+
 # Configure
-cp $(brew --prefix)/etc/caddy-hot-reloader/example.Caddyfile \
-   $(brew --prefix)/etc/caddy-hot-reloader/Caddyfile
-nano $(brew --prefix)/etc/caddy-hot-reloader/Caddyfile  # Edit paths
+cp $(brew --prefix)/etc/Caddyfile.example \
+    $(brew --prefix)/etc/Caddyfile
+nano $(brew --prefix)/etc/Caddyfile  # Edit paths
 
 # Start
 brew services start caddy-hot-reloader
@@ -93,10 +97,6 @@ tail -f $(brew --prefix)/var/log/caddy-hot-reloader.log
 - Read [README.md](README.md) for detailed configuration options
 - See Implementation Notes in README for handler order issues
 - Configure `.gitignore` to exclude cache/vendor directories
-
----
-
-That's it! You now have hot-reloading at your real URLs. 🎉
 
 ---
 
