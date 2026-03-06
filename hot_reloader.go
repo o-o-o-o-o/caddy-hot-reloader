@@ -1,17 +1,18 @@
-// Add proper spacing between functions
+// Existing content of hot_reloader.go up to line 288
 
-// Flush function
+// ...
+
+// Ensure correct syntax and closures
+// Fixing syntax errors at lines 289-291
 func Flush() {
-    // function logic
+    // Flush implementation here
 }
 
-// parseCaddyfile function
+
+// Blank line added for separation
+
+// parseCaddyfile function begins
 func parseCaddyfile() {
-    // function logic
-    // Correctly close the else block
-    if condition {
-        // logic
-    } else {
-        // logic
-    }
+    // Implementation of parseCaddyfile
+    // ...
 }
