@@ -23,6 +23,9 @@ jobs:
 
   formula-checks:
     runs-on: macos-latest
+    env:
+      TAP_NAME: local/test
+      FORMULA_NAME: caddy-hot-reloader
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -33,11 +36,17 @@ jobs:
       - name: Brew style
         run: brew style Formula/caddy-hot-reloader.rb
 
+      - name: Create temporary tap and copy formula
+        run: |
+          brew tap-new "$TAP_NAME"
+          TAP_DIR="$(brew --repository)/Library/Taps/local/homebrew-test"
+          cp Formula/caddy-hot-reloader.rb "$TAP_DIR/Formula/"
+
       - name: Build and install formula
-        run: brew install --build-from-source ./Formula/caddy-hot-reloader.rb
+        run: brew install --build-from-source "$TAP_NAME/$FORMULA_NAME"
 
       - name: Brew audit
-        run: brew audit --strict --online caddy-hot-reloader
+        run: brew audit --strict --online "$TAP_NAME/$FORMULA_NAME"
 
       - name: Formula runtime test
-        run: brew test caddy-hot-reloader
+        run: brew test "$TAP_NAME/$FORMULA_NAME"
