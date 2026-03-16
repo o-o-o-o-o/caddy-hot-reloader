@@ -137,6 +137,7 @@ func (h *HotReloader) ServeHTTP(w http.ResponseWriter, r *http.Request, next cad
 		hotReloader:    h,
 		expectsHTML:    strings.Contains(r.Header.Get("Accept"), "text/html") || strings.Contains(r.Header.Get("Accept"), "application/xhtml+xml"),
 		method:         r.Method,
+		isHTMXRequest:  r.Header.Get("HX-Request") != "",
 	}
 
 	// Flush buffered response after handler completes
@@ -212,14 +213,15 @@ func (h *HotReloader) handleWebSocket(w http.ResponseWriter, r *http.Request) er
 // It buffers HTML responses to inject the script cleanly
 type responseWrapper struct {
 	http.ResponseWriter
-	host         string
-	hotReloader  *HotReloader
-	expectsHTML  bool
-	method       string
-	wroteHeader  bool
-	statusCode   int
-	buffer       []byte
-	shouldInject bool
+	host          string
+	hotReloader   *HotReloader
+	expectsHTML   bool
+	method        string
+	isHTMXRequest bool
+	wroteHeader   bool
+	statusCode    int
+	buffer        []byte
+	shouldInject  bool
 }
 
 func (rw *responseWrapper) WriteHeader(statusCode int) {
@@ -227,9 +229,9 @@ func (rw *responseWrapper) WriteHeader(statusCode int) {
 		rw.wroteHeader = true
 		rw.statusCode = statusCode
 
-		// Only inject into HTML responses
+		// Only inject into full HTML responses (skip HTMX fragments)
 		contentType := rw.Header().Get("Content-Type")
-		if statusCode == 200 && (strings.Contains(contentType, "text/html") || (contentType == "" && rw.expectsHTML)) {
+		if statusCode == 200 && !rw.isHTMXRequest && (strings.Contains(contentType, "text/html") || (contentType == "" && rw.expectsHTML)) {
 			rw.shouldInject = true
 			// Remove Content-Length header since we'll be modifying the response body
 			rw.Header().Del("Content-Length")
@@ -281,7 +283,7 @@ func (rw *responseWrapper) Flush() {
 				zap.String("host", rw.host),
 				zap.Int("size", len(rw.buffer)))
 
-			diagnosticScript := `<script>console.error("[Caddy Hot Reload] Failed to inject script: no closing </body> tag found. Check server HTML output.");</script>`
+			diagnosticScript := `<script>console.error("[c\u2668\ufe0fddy] Failed to inject script: no closing </body> tag found. Check server HTML output.");</script>`
 			injected := string(rw.buffer) + diagnosticScript
 
 			rw.ResponseWriter.WriteHeader(rw.statusCode)
@@ -353,6 +355,8 @@ var (
 const clientScript = `<script>
 (function() {
 	'use strict';
+	var LOG_PREFIX = '[c\u2668\ufe0fddy]';
+	window.__caddy_log_prefix = LOG_PREFIX;
 	var ws, reconnectTimeout, reconnectDelay = 1000;
 	var maxReconnectDelay = 8000;
 	var isTabHidden = false;
@@ -374,30 +378,30 @@ const clientScript = `<script>
 		ws = new WebSocket(url);
 		
 		ws.onopen = function() {
-			console.log('[Caddy 🔄] Connected');
+			console.log(LOG_PREFIX, 'Connected');
 			reconnectDelay = 1000; // reset delay on successful connection
 		};
 		
 		ws.onmessage = function(event) {
 			try {
 				var data = JSON.parse(event.data);
-				console.log('[Caddy 🔄] Received:', data);
+				console.log(LOG_PREFIX, 'Received:', data);
 				
 				if (data.type === 'css') {
 					// Inject CSS without full reload
 					reloadCSS(data.file);
 				} else if (data.type === 'reload') {
 					// Full page reload
-					console.log('[Caddy 🔄] Reloading page...');
+					console.log(LOG_PREFIX, 'Reloading page...');
 					window.location.reload();
 				}
 			} catch (e) {
-				console.error('[Caddy 🔄] Error parsing message:', e);
+				console.error(LOG_PREFIX, 'Error parsing message:', e);
 			}
 		};
 		
 		ws.onclose = function() {
-			console.log('[Caddy 🔄] Disconnected');
+			console.log(LOG_PREFIX, 'Disconnected');
 			if (!isTabHidden) {
 				// Exponential backoff
 				reconnectTimeout = setTimeout(connect, reconnectDelay);
@@ -406,12 +410,12 @@ const clientScript = `<script>
 		};
 		
 		ws.onerror = function(error) {
-			console.error('[Caddy 🔄] WebSocket error:', error);
+			console.error(LOG_PREFIX, 'WebSocket error:', error);
 		};
 	}
 
 	function reloadCSS(changedFile) {
-		console.log('[Caddy 🔄] Reloading CSS:', changedFile);
+		console.log(LOG_PREFIX, 'Reloading CSS:', changedFile);
 		var links = document.querySelectorAll('link[rel="stylesheet"]');
 		var reloaded = false;
 		
