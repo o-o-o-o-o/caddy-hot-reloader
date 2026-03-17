@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   automerge:
-    if: github.actor == github.repository_owner
+    if: github.actor == github.repository_owner || github.actor == 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - name: Enable auto-merge
