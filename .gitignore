@@ -35,3 +35,6 @@ Caddyfile.personal
 # Local development
 .env
 .env.local
+
+# CI artifacts
+release.tar.gz
