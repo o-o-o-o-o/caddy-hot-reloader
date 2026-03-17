@@ -54,9 +54,10 @@ jobs:
           echo "SHA256: ${SHA256}"
 
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v5
+        uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          base: main
           commit-message: "chore: update formula to ${{ steps.release.outputs.version }}"
           title: "Update formula to ${{ steps.release.outputs.version }}"
           body: |
