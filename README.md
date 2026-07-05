@@ -5,6 +5,12 @@ A Caddy build that provides hot-reloading functionality for local development, w
 // NOTE: This plugin is designed for LOCAL DEVELOPMENT only.
 // Do not use in production on internet-facing servers.
 
+## Docs
+
+- [backlog/docs/README.md](backlog/docs/README.md) - Supplemental docs index
+- [backlog/docs/QUICKSTART.md](backlog/docs/QUICKSTART.md) - Minimal install and verification flow
+- [backlog/docs/HOMEBREW_SETUP.md](backlog/docs/HOMEBREW_SETUP.md) - Tap and release maintenance guide
+
 ## Features
 
 - **Per-Site Hot Reload**: Only reloads the affected site, not all open browser tabs
