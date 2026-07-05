@@ -5,11 +5,18 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/fsnotify/fsnotify"
 	ignore "github.com/sabhiram/go-gitignore"
 	"go.uber.org/zap"
 )
+
+// debounceInterval is the quiet period after the last file event before a
+// coalesced reload message is broadcast. Editor saves and build steps emit
+// bursts of events; without settling, clients reload repeatedly and may
+// fetch half-written files.
+const debounceInterval = 100 * time.Millisecond
 
 // FileWatcher watches files for changes
 type FileWatcher struct {
@@ -165,6 +172,13 @@ func (fw *FileWatcher) setupWatches() error {
 func (fw *FileWatcher) Watch(broadcastCh chan<- *ReloadMessage, shutdownCh <-chan struct{}) {
 	fw.logger.Debug("starting file watch loop")
 
+	debounce := time.NewTimer(debounceInterval)
+	if !debounce.Stop() {
+		<-debounce.C
+	}
+	timerActive := false
+	pending := make(map[string]string) // relative path -> message type
+
 	for {
 		select {
 		case event, ok := <-fw.watcher.Events:
@@ -173,9 +187,30 @@ func (fw *FileWatcher) Watch(broadcastCh chan<- *ReloadMessage, shutdownCh <-cha
 			}
 
 			// Only care about Write and Create events
-			if event.Op&fsnotify.Write == fsnotify.Write || event.Op&fsnotify.Create == fsnotify.Create {
-				fw.handleFileChange(event.Name, broadcastCh)
+			if event.Op&(fsnotify.Write|fsnotify.Create) == 0 {
+				continue
 			}
+
+			if event.Op&fsnotify.Create != 0 {
+				fw.watchIfNewDir(event.Name, pending)
+			}
+
+			if msg := fw.classifyChange(event.Name); msg != nil {
+				pending[msg.File] = msg.Type
+			}
+
+			if len(pending) > 0 {
+				if timerActive && !debounce.Stop() {
+					<-debounce.C
+				}
+				debounce.Reset(debounceInterval)
+				timerActive = true
+			}
+
+		case <-debounce.C:
+			timerActive = false
+			fw.flushPending(pending, broadcastCh)
+			pending = make(map[string]string)
 
 		case err, ok := <-fw.watcher.Errors:
 			if !ok {
@@ -190,49 +225,155 @@ func (fw *FileWatcher) Watch(broadcastCh chan<- *ReloadMessage, shutdownCh <-cha
 	}
 }
 
-// handleFileChange processes a file change event
-func (fw *FileWatcher) handleFileChange(filePath string, broadcastCh chan<- *ReloadMessage) {
-	// Check if file should be excluded
+// watchIfNewDir adds watches for a newly created directory tree so files
+// inside it trigger reloads. Files already present when the walk runs (e.g.
+// from a recursive copy) are recorded in pending, since their own events may
+// have fired before the watch existed.
+func (fw *FileWatcher) watchIfNewDir(path string, pending map[string]string) {
+	info, err := os.Stat(path)
+	if err != nil || !info.IsDir() {
+		return
+	}
+
+	walkErr := filepath.Walk(path, func(p string, info os.FileInfo, err error) error {
+		if err != nil {
+			return nil
+		}
+		if info.IsDir() {
+			if fw.shouldExclude(p) {
+				return filepath.SkipDir
+			}
+			if addErr := fw.watcher.Add(p); addErr != nil {
+				fw.logger.Warn("failed to watch new directory",
+					zap.String("path", p),
+					zap.Error(addErr),
+				)
+				return nil
+			}
+			fw.watchedDirs = append(fw.watchedDirs, p)
+			fw.logger.Debug("watching new directory", zap.String("path", p))
+			return nil
+		}
+		if msg := fw.classifyChange(p); msg != nil {
+			pending[msg.File] = msg.Type
+		}
+		return nil
+	})
+	if walkErr != nil {
+		fw.logger.Warn("error walking new directory",
+			zap.String("path", path),
+			zap.Error(walkErr),
+		)
+	}
+}
+
+// classifyChange decides whether a changed path should trigger a reload and
+// returns the message to coalesce, or nil to ignore the event.
+func (fw *FileWatcher) classifyChange(filePath string) *ReloadMessage {
+	if isEditorJunk(filepath.Base(filePath)) {
+		return nil
+	}
+
 	if fw.shouldExclude(filePath) {
 		fw.logger.Debug("ignoring excluded file",
 			zap.String("file", filePath),
 		)
-		return
+		return nil
 	}
 
-	// Check if file extension matches
 	if !fw.matchesExtension(filePath) {
-		return
+		return nil
 	}
 
-	// Get relative path
+	// Directory creations get watches via watchIfNewDir but are not changes
+	if info, err := os.Stat(filePath); err == nil && info.IsDir() {
+		return nil
+	}
+
 	relPath, err := filepath.Rel(fw.basePath, filePath)
 	if err != nil {
 		relPath = filepath.Base(filePath)
 	}
 
-	// Determine reload type based on file extension
-	ext := strings.ToLower(filepath.Ext(filePath))
 	msgType := "reload"
-
+	ext := strings.ToLower(filepath.Ext(filePath))
 	if ext == ".css" || ext == ".scss" || ext == ".sass" {
 		msgType = "css"
 	}
 
-	fw.logger.Info("file changed",
+	fw.logger.Debug("file changed",
 		zap.String("file", relPath),
 		zap.String("type", msgType),
 	)
 
-	// Send reload message
+	return &ReloadMessage{Type: msgType, File: relPath}
+}
+
+// flushPending broadcasts one coalesced message for all changes that settled
+// within the debounce window.
+func (fw *FileWatcher) flushPending(pending map[string]string, broadcastCh chan<- *ReloadMessage) {
+	msg := coalescePending(pending)
+	if msg == nil {
+		return
+	}
+
+	fw.logger.Info("broadcasting change",
+		zap.String("type", msg.Type),
+		zap.String("file", msg.File),
+		zap.Int("changed_files", len(pending)),
+	)
+
 	select {
-	case broadcastCh <- &ReloadMessage{
-		Type: msgType,
-		File: relPath,
-	}:
+	case broadcastCh <- msg:
 	default:
 		fw.logger.Warn("broadcast channel full, dropping message")
 	}
+}
+
+// coalescePending reduces a batch of settled changes to a single message.
+// Any non-CSS change forces a full reload; multiple CSS changes are sent with
+// an empty file so the client refreshes every stylesheet.
+func coalescePending(pending map[string]string) *ReloadMessage {
+	if len(pending) == 0 {
+		return nil
+	}
+
+	var cssFile string
+	for file, msgType := range pending {
+		if msgType == "reload" {
+			return &ReloadMessage{Type: "reload", File: file}
+		}
+		cssFile = file
+	}
+
+	if len(pending) == 1 {
+		return &ReloadMessage{Type: "css", File: cssFile}
+	}
+	return &ReloadMessage{Type: "css"}
+}
+
+// isEditorJunk reports whether a file name is a transient editor artifact:
+// Vim's 4913 probe file, ~ backups and .sw? swap files, Emacs autosaves and
+// lock files, and .DS_Store (kept here even though it is in the default
+// excludes, so custom exclude lists don't reintroduce it).
+func isEditorJunk(name string) bool {
+	if name == "4913" || name == ".DS_Store" {
+		return true
+	}
+	if strings.HasSuffix(name, "~") {
+		return true
+	}
+	switch strings.ToLower(filepath.Ext(name)) {
+	case ".swp", ".swo", ".swx":
+		return true
+	}
+	if strings.HasPrefix(name, "#") && strings.HasSuffix(name, "#") {
+		return true
+	}
+	if strings.HasPrefix(name, ".#") {
+		return true
+	}
+	return false
 }
 
 // shouldExclude checks if a path should be excluded
@@ -261,8 +402,13 @@ func (fw *FileWatcher) shouldExclude(path string) bool {
 	return false
 }
 
-// matchesExtension checks if file extension matches configured extensions
+// matchesExtension checks if file extension matches configured extensions.
+// An empty list means every extension triggers a reload.
 func (fw *FileWatcher) matchesExtension(filePath string) bool {
+	if len(fw.config.Extensions) == 0 {
+		return true
+	}
+
 	ext := strings.ToLower(strings.TrimPrefix(filepath.Ext(filePath), "."))
 
 	for _, allowedExt := range fw.config.Extensions {

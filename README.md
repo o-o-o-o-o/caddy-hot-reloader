@@ -18,6 +18,7 @@ A Caddy build that provides hot-reloading functionality for local development, w
 - **Request-Time Discovery**: Automatically detects and watches sites as they're accessed
 - **Smart Filtering**: Respects `.gitignore` and allows explicit exclude patterns
 - **Efficient Watching**: Uses `fsnotify` for event-driven file watching (not polling)
+- **Debounced Broadcasts**: Event bursts (editor saves, builds, `git checkout`) settle for 100ms and coalesce into a single reload message
 - **Highly Configurable**: Control watch patterns, file extensions, timeouts, and more via Caddyfile
 - **Debug Logging**: Comprehensive logging for troubleshooting
 
@@ -168,6 +169,7 @@ xcaddy build --with github.com/o-o-o-o-o/caddy-hot-reloader=.
 - Base directory: Not set (only needed for domain-based auto-discovery with `base_dir`)
 - Watch patterns: Empty (watches entire site directory)
 - Exclude patterns: `**.cache`, `**/vendor/**`, `**/node_modules/**`, `**/.DS_Store`
+- Editor temp files are always ignored regardless of excludes: Vim's `4913` probe file, `~` backups, `.swp`/`.swo`/`.swx` swap files, Emacs `#autosaves#` and `.#lock` files, `.DS_Store`
 - File extensions: Empty (all extensions trigger reload; configure to filter)
 - Respect `.gitignore`: `true`
 - Idle watcher shutdown: `30m` (configurable)
@@ -231,7 +233,7 @@ xcaddy build --with github.com/o-o-o-o-o/caddy-hot-reloader=.
    - CSS files → inject without reload
    - HTML/PHP/JS → full page reload
 
-4. **Broadcast**: File changes broadcast only to clients of the affected site
+4. **Broadcast**: Changes settle for a 100ms quiet period and coalesce into one message, broadcast only to clients of the affected site. If anything other than CSS changed, the whole batch becomes a single full reload.
 
 ## Architecture
 
