@@ -5,7 +5,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/caddyserver/caddy/v2"
@@ -33,7 +32,6 @@ type HotReloader struct {
 	// Runtime state
 	logger         *zap.Logger
 	manager        *SiteManager
-	mu             sync.RWMutex
 	idleTimeoutDur time.Duration
 }
 
@@ -51,13 +49,13 @@ func (h *HotReloader) Provision(ctx caddy.Context) error {
 
 	// Set defaults
 	if len(h.Watch) == 0 {
-		h.Watch = []string{}  // Empty = watch entire base directory (more flexible)
+		h.Watch = []string{} // Empty = watch entire base directory (more flexible)
 	}
 	if len(h.Exclude) == 0 {
 		h.Exclude = []string{"**.cache", "**/vendor/**", "**/node_modules/**", "**/.DS_Store"}
 	}
 	if len(h.Extensions) == 0 {
-		h.Extensions = []string{}  // Empty = all extensions trigger reload
+		h.Extensions = []string{} // Empty = all extensions trigger reload
 	}
 	if !h.RespectGitignore {
 		h.RespectGitignore = true // default to true
@@ -360,26 +358,42 @@ const clientScript = `<script>
 	var ws, reconnectTimeout, reconnectDelay = 1000;
 	var maxReconnectDelay = 8000;
 	var isTabHidden = false;
+	var everConnected = false;
+	var unexpectedClose = false;
 
-	// Track visibility to stop reconnecting when tab is closed/hidden
+	// Pause the connection while the tab is hidden, resume when visible again
 	document.addEventListener('visibilitychange', function() {
 		isTabHidden = document.hidden;
-		if (isTabHidden && ws) {
-			ws.close();
+		if (isTabHidden) {
+			if (ws) ws.close();
+		} else {
+			clearTimeout(reconnectTimeout);
+			reconnectDelay = 1000;
+			connect();
 		}
 	});
 
 	function connect() {
 		if (isTabHidden) return;
+		if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
 
 		var protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
 		var url = protocol + '//' + window.location.host + '/hot-reload';
-		
+
 		ws = new WebSocket(url);
-		
+
 		ws.onopen = function() {
 			console.log(LOG_PREFIX, 'Connected');
 			reconnectDelay = 1000; // reset delay on successful connection
+			if (everConnected && unexpectedClose) {
+				// Server restarted while we were watching; reload in case
+				// changes were broadcast during the gap
+				console.log(LOG_PREFIX, 'Reconnected, reloading...');
+				window.location.reload();
+				return;
+			}
+			everConnected = true;
+			unexpectedClose = false;
 		};
 		
 		ws.onmessage = function(event) {
@@ -403,6 +417,8 @@ const clientScript = `<script>
 		ws.onclose = function() {
 			console.log(LOG_PREFIX, 'Disconnected');
 			if (!isTabHidden) {
+				// Closed by the server (restart/config reload), not by us
+				unexpectedClose = true;
 				// Exponential backoff
 				reconnectTimeout = setTimeout(connect, reconnectDelay);
 				reconnectDelay = Math.min(reconnectDelay * 2, maxReconnectDelay);

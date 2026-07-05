@@ -10,6 +10,10 @@ import (
 	"go.uber.org/zap"
 )
 
+// clientWriteTimeout bounds how long a broadcast write may block on a single
+// (possibly dead) client before moving on to the next one.
+const clientWriteTimeout = 5 * time.Second
+
 // SiteManager manages multiple sites and their watchers
 type SiteManager struct {
 	logger     *zap.Logger
@@ -95,6 +99,9 @@ func (sm *SiteManager) EnsureSiteWatched(domain, sitePath string) {
 
 	site.Watcher = watcher
 	sm.sites[domain] = site
+	// Snapshot the count before the watch goroutine starts: it may append to
+	// watchedDirs when new directories appear.
+	watchDirCount := len(watcher.watchedDirs)
 	sm.mu.Unlock()
 
 	// Start watcher
@@ -113,7 +120,7 @@ func (sm *SiteManager) EnsureSiteWatched(domain, sitePath string) {
 
 	sm.logger.Info("site watcher started",
 		zap.String("domain", domain),
-		zap.Int("watch_dirs", len(site.Watcher.watchedDirs)),
+		zap.Int("watch_dirs", watchDirCount),
 	)
 }
 
@@ -141,16 +148,17 @@ func (sm *SiteManager) broadcastLoop(site *Site) {
 				zap.Int("clients", clientCount),
 			)
 
+			// Write sequentially: this loop is the only writer per
+			// connection, which gorilla/websocket requires (concurrent
+			// writes panic). The deadline bounds stalls from dead clients.
 			site.ClientsMu.RLock()
 			for client := range site.Clients {
-				// Send in goroutine to avoid blocking
-				go func(c *websocket.Conn) {
-					if err := c.WriteJSON(msg); err != nil {
-						sm.logger.Debug("failed to send message to client",
-							zap.Error(err),
-						)
-					}
-				}(client)
+				client.SetWriteDeadline(time.Now().Add(clientWriteTimeout))
+				if err := client.WriteJSON(msg); err != nil {
+					sm.logger.Debug("failed to send message to client",
+						zap.Error(err),
+					)
+				}
 			}
 			site.ClientsMu.RUnlock()
 

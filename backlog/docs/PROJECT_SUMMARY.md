@@ -36,8 +36,8 @@ A Caddy v2 module that provides hot-reloading for wildcard local development sit
   - Implementation lessons learned
   - macOS service setup
   - Troubleshooting
-- **QUICKSTART.md** (2.1 KB) - Ultra-concise setup guide
-- **HOMEBREW_SETUP.md** (6.1 KB) - Complete Homebrew tap creation guide
+- **backlog/docs/QUICKSTART.md** (2.1 KB) - Ultra-concise setup guide
+- **backlog/docs/HOMEBREW_SETUP.md** (6.1 KB) - Complete Homebrew tap creation guide
 - **LICENSE** - Apache 2.0
 
 ### Build Scripts
@@ -151,7 +151,7 @@ Build dependencies:
 1. **Use This Repo as Homebrew Tap Source**
    - Keep `Formula/caddy-hot-reloader.rb` in this repository
    - Keep `.github/workflows/update-formula.yml` in this repository
-   - Follow HOMEBREW_SETUP.md
+   - Follow `backlog/docs/HOMEBREW_SETUP.md`
 
 2. **Tag First Release**
    - Tag v1.0.0 in this repo

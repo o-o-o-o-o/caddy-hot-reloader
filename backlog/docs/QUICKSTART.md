@@ -53,7 +53,7 @@ Add `hot_reloader` to your `*.*.why` block:
 }
 ```
 
-**Important**: Use a `route` block if you have handler order issues (see [README.md](README.md) Implementation Notes).
+**Important**: Use a `route` block if you have handler order issues (see [../../README.md](../../README.md) Implementation Notes).
 
 ## Testing
 
@@ -94,7 +94,7 @@ tail -f $(brew --prefix)/var/log/caddy-hot-reloader.log
 
 ## Next Steps
 
-- Read [README.md](README.md) for detailed configuration options
+- Read [../../README.md](../../README.md) for detailed configuration options
 - See Implementation Notes in README for handler order issues
 - Configure `.gitignore` to exclude cache/vendor directories
 
