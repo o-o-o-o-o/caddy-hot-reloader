@@ -234,8 +234,13 @@ Plugin Components:
 ├── hot_reloader.go    - Main module, HTTP middleware, config parsing
 ├── manager.go         - Site manager, WebSocket handling, broadcast
 ├── watcher.go         - File watching with fsnotify, .gitignore support
-└── README.md          - Documentation
+├── README.md          - Primary user documentation
+└── backlog/docs/      - Supplemental project and release guides
 ```
+
+Additional documentation:
+
+- [backlog/docs/README.md](backlog/docs/README.md) - Index of project notes, quickstart, and release guides
 
 ## Development
 
@@ -447,7 +452,7 @@ If you're maintaining the Homebrew tap:
    brew test caddy-hot-reloader
    ```
 
-See [HOMEBREW_SETUP.md](HOMEBREW_SETUP.md) for complete instructions.
+See [backlog/docs/HOMEBREW_SETUP.md](backlog/docs/HOMEBREW_SETUP.md) for complete instructions.
 
 ### Performance Tuning
 
