@@ -7,3 +7,8 @@
 - The client's visibilitychange handler closed the socket when a tab was hidden but never reconnected on visible — switching browser tabs permanently killed hot reload for that page.
 - fsnotify Create events must be stat'ed for directories: new subtrees need walk+Add, and files already inside must be classified since their events can fire before the watch exists.
 - Debounce in a select loop: one timer, Stop-and-drain before Reset; coalesce burst into one message (any non-CSS change wins as a full reload).
+
+## TASK-4 (2026-07-05): Formula automation without a PAT
+- The v0.7.0 release exposed that FORMULA_PAT was never added as a repo secret; the workflow failed at checkout with "Input required and not supplied: token".
+- PRs created with the built-in GITHUB_TOKEN cannot trigger other workflows (CI/automerge) — that was the whole reason the PAT design existed. Pushing the formula bump directly to main with GITHUB_TOKEN sidesteps it: no secret, no expiry, one less failure mode.
+- `gh workflow run --ref <branch>` runs the branch's version of a workflow — lets you validate workflow changes before merging them to main.
