@@ -43,7 +43,10 @@ index.local {
 		# base_dir "/path/to/your/test/sites"
 		# watch "site/**" "assets/**" "content/**"
 		# exclude "site/cache/**"
-		# extensions "html" "css" "js" "php" "scss" "sass"
+		# extensions "html" "css" "js" "php"
+		# Leave scss/sass out: they're compile sources, not served files —
+		# including them (or a sourcemap's .map) turns one CSS edit into
+		# several separate reload/injection messages instead of one.
 		# respect_gitignore true
 	}
 	
