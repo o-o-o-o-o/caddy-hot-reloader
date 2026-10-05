@@ -193,7 +193,7 @@ func (sm *SiteManager) HandleWebSocket(w http.ResponseWriter, r *http.Request) e
 		},
 	}
 
-	conn, err := upgrader.Upgrade(w, r, nil)
+	conn, err := upgrader.Upgrade(hijackableWriter(w), r, nil)
 	if err != nil {
 		sm.logger.Error("failed to upgrade websocket",
 			zap.Error(err),
@@ -355,4 +355,20 @@ func (sm *SiteManager) Shutdown() error {
 
 	sm.logger.Info("site manager shutdown complete")
 	return nil
+}
+
+// hijackableWriter returns the first writer in the Unwrap chain that implements
+// http.Hijacker. gorilla/websocket asserts the interface directly, and newer
+// Caddy wraps the response writer in types that only expose Unwrap.
+func hijackableWriter(w http.ResponseWriter) http.ResponseWriter {
+	for cur := w; ; {
+		if _, ok := cur.(http.Hijacker); ok {
+			return cur
+		}
+		u, ok := cur.(interface{ Unwrap() http.ResponseWriter })
+		if !ok {
+			return w
+		}
+		cur = u.Unwrap()
+	}
 }
