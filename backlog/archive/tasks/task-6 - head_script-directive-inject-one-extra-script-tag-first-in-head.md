@@ -1,7 +1,7 @@
 ---
 id: TASK-6
 title: 'head_script directive: inject one extra script tag first in <head>'
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-11-16T23:25:00Z'
 updated_date: '2026-11-16T23:40:00Z'
