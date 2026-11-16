@@ -1,5 +1,6 @@
 # Binaries
 caddy
+caddy.prev
 *.exe
 *.dll
 *.so

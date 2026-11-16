@@ -198,6 +198,26 @@ xcaddy build --with github.com/o-o-o-o-o/caddy-hot-reloader=.
 }
 ```
 
+### `head_script`
+
+`head_script <url>` adds `<script src="url"></script>` as the first child of `<head>` in each injected HTML response. The script runs before every page script. The reload client stays before `</body>`.
+
+If a response has no `<head>`, the plugin logs one warning and skips the head script. The reload client still goes in. Without the directive, responses do not change.
+
+### Roll Back the Caddy Binary
+
+Before you install a new binary, keep the live one:
+
+```bash
+cp -p /opt/homebrew/bin/caddy ./caddy.prev
+```
+
+To roll back, put the old binary in place and restart:
+
+```bash
+cp -p ./caddy.prev /opt/homebrew/bin/caddy && brew services restart caddy
+```
+
 ### Using Snippets (Global Config)
 
 ```caddy

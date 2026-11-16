@@ -3,10 +3,77 @@ package hotreloader
 import (
 	"context"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/caddyserver/caddy/v2"
+	"github.com/caddyserver/caddy/v2/caddyconfig/caddyfile"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+	"go.uber.org/zap/zaptest/observer"
 )
+
+// serveHTML runs an HTML body through the response wrapper and returns the
+// written body plus the plugin warnings.
+func serveHTML(t *testing.T, h *HotReloader, html string) (string, []observer.LoggedEntry) {
+	t.Helper()
+
+	core, logs := observer.New(zapcore.WarnLevel)
+	h.logger = zap.New(core)
+
+	rec := httptest.NewRecorder()
+	rw := &responseWrapper{ResponseWriter: rec, host: "test.example", hotReloader: h, expectsHTML: true}
+	rw.Header().Set("Content-Type", "text/html")
+	rw.WriteHeader(200)
+	rw.Write([]byte(html))
+	rw.Flush()
+
+	return rec.Body.String(), logs.All()
+}
+
+func TestHeadScriptFirstInHead(t *testing.T) {
+	h := &HotReloader{HeadScript: "/faults.js"}
+	got, _ := serveHTML(t, h, `<html><head><script src="/app.js"></script></head><body>x</body></html>`)
+	want := `<html><head><script src="/faults.js"></script><script src="/app.js"></script></head><body>x` + clientScript + `</body></html>`
+	if got != want {
+		t.Fatalf("body = %q, want %q", got, want)
+	}
+}
+
+func TestHeadScriptWithHeadAttributes(t *testing.T) {
+	h := &HotReloader{HeadScript: "/faults.js"}
+	got, _ := serveHTML(t, h, `<HEAD lang="x"><title>t</title></HEAD><body></body>`)
+	if !strings.HasPrefix(got, `<HEAD lang="x"><script src="/faults.js"></script><title>`) {
+		t.Fatalf("head script not first in head: %q", got)
+	}
+}
+
+func TestNoHeadScriptDirectiveLeavesBodyUnchanged(t *testing.T) {
+	h := &HotReloader{}
+	html := `<html><head><script src="/app.js"></script></head><body>x</body></html>`
+	got, logs := serveHTML(t, h, html)
+	want := strings.Replace(html, "</body>", clientScript+"</body>", 1)
+	if got != want {
+		t.Fatalf("body = %q, want %q", got, want)
+	}
+	if len(logs) != 0 {
+		t.Fatalf("unexpected warnings: %v", logs)
+	}
+}
+
+func TestHeadScriptWithoutHeadWarnsAndKeepsClient(t *testing.T) {
+	h := &HotReloader{HeadScript: "/faults.js"}
+	got, logs := serveHTML(t, h, `<p>fragment</p><body>x</body>`)
+	if strings.Contains(got, "/faults.js") {
+		t.Fatalf("head script injected without <head>: %q", got)
+	}
+	if !strings.Contains(got, clientScript) {
+		t.Fatalf("reload client missing: %q", got)
+	}
+	if len(logs) != 1 || !strings.Contains(logs[0].Message, "head_script") {
+		t.Fatalf("want one head_script warning, got %v", logs)
+	}
+}
 
 func TestDiscoverSiteFromRequestRoot(t *testing.T) {
 	t.Helper()
@@ -47,5 +114,12 @@ func TestDiscoverSiteWithBaseDir(t *testing.T) {
 	want := "/Users/why/Test Sites/test/laac-acc/www"
 	if got != want {
 		t.Fatalf("discoverSite() = %q, want %q", got, want)
+	}
+}
+
+func TestHeadScriptRejectsExtraArgs(t *testing.T) {
+	d := caddyfile.NewTestDispenser("hot_reloader {\n head_script /a.js /b.js\n}")
+	if err := (&HotReloader{}).UnmarshalCaddyfile(d); err == nil {
+		t.Fatal("want error for extra head_script argument")
 	}
 }

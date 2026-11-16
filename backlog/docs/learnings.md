@@ -17,3 +17,7 @@
 - The v0.7.0 release exposed that FORMULA_PAT was never added as a repo secret; the workflow failed at checkout with "Input required and not supplied: token".
 - PRs created with the built-in GITHUB_TOKEN cannot trigger other workflows (CI/automerge) — that was the whole reason the PAT design existed. Pushing the formula bump directly to main with GITHUB_TOKEN sidesteps it: no secret, no expiry, one less failure mode.
 - `gh workflow run --ref <branch>` runs the branch's version of a workflow — lets you validate workflow changes before merging them to main.
+
+## TASK-6 (2026-11-16): head_script directive
+- `go test` has no Caddy binary in the loop: drive `responseWrapper` + `Flush` with a `zaptest/observer` logger to test injected bodies and warnings. A struct field added alone gives a real red run, not a compile error. (TASK-6)
+- The review found a known limit: the `<head>` regex also matches inside comments or inline script strings, as the `</body>` search does. Fix only if a real page breaks. TASK-7 holds a separate pre-existing bug: an empty text/html body never writes its header. (TASK-6)

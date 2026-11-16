@@ -1,9 +1,11 @@
 package hotreloader
 
 import (
+	"html"
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -28,6 +30,7 @@ type HotReloader struct {
 	Extensions       []string `json:"extensions,omitempty"`
 	RespectGitignore bool     `json:"respect_gitignore,omitempty"`
 	IdleTimeout      string   `json:"idle_timeout,omitempty"`
+	HeadScript       string   `json:"head_script,omitempty"`
 
 	// Runtime state
 	logger         *zap.Logger
@@ -90,6 +93,7 @@ func (h *HotReloader) Provision(ctx caddy.Context) error {
 		zap.Strings("extensions", h.Extensions),
 		zap.Bool("respect_gitignore", h.RespectGitignore),
 		zap.String("idle_timeout", h.IdleTimeout),
+		zap.String("head_script", h.HeadScript),
 	)
 
 	return nil
@@ -207,6 +211,20 @@ func (h *HotReloader) handleWebSocket(w http.ResponseWriter, r *http.Request) er
 	return h.manager.HandleWebSocket(w, r)
 }
 
+// headOpenTag matches <head> and <head attrs>, not <header>
+var headOpenTag = regexp.MustCompile(`(?i)<head(\s[^>]*)?>`)
+
+// injectHeadScript puts a script tag for url right after the opening <head> tag.
+// It returns false when the body has no <head>.
+func injectHeadScript(body, url string) (string, bool) {
+	loc := headOpenTag.FindStringIndex(body)
+	if loc == nil {
+		return body, false
+	}
+	tag := `<script src="` + html.EscapeString(url) + `"></script>`
+	return body[:loc[1]] + tag + body[loc[1]:], true
+}
+
 // responseWrapper wraps http.ResponseWriter to inject client script
 // It buffers HTML responses to inject the script cleanly
 type responseWrapper struct {
@@ -264,6 +282,15 @@ func (rw *responseWrapper) Flush() {
 	if rw.shouldInject && len(rw.buffer) > 0 {
 		body := string(rw.buffer)
 
+		if url := rw.hotReloader.HeadScript; url != "" {
+			var ok bool
+			if body, ok = injectHeadScript(body, url); !ok {
+				rw.hotReloader.logger.Warn("no <head> tag found, head_script not injected",
+					zap.String("host", rw.host),
+					zap.String("head_script", url))
+			}
+		}
+
 		// Inject script before </body>
 		if idx := strings.LastIndex(body, "</body>"); idx != -1 {
 			injected := body[:idx] + clientScript + body[idx:]
@@ -282,7 +309,7 @@ func (rw *responseWrapper) Flush() {
 				zap.Int("size", len(rw.buffer)))
 
 			diagnosticScript := `<script>console.error("[c\u2668\ufe0fddy] Failed to inject script: no closing </body> tag found. Check server HTML output.");</script>`
-			injected := string(rw.buffer) + diagnosticScript
+			injected := body + diagnosticScript
 
 			rw.ResponseWriter.WriteHeader(rw.statusCode)
 			rw.ResponseWriter.Write([]byte(injected))
@@ -332,6 +359,14 @@ func (h *HotReloader) UnmarshalCaddyfile(d *caddyfile.Dispenser) error {
 					return d.ArgErr()
 				}
 				h.IdleTimeout = d.Val()
+			case "head_script":
+				if !d.NextArg() {
+					return d.ArgErr()
+				}
+				h.HeadScript = d.Val()
+				if d.NextArg() {
+					return d.ArgErr()
+				}
 			default:
 				return d.Errf("unrecognized subdirective: %s", d.Val())
 			}
