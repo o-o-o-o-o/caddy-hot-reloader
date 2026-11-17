@@ -1,7 +1,7 @@
 ---
 id: TASK-7
 title: Flush drops header for empty text/html body
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-11-16T23:39:00Z'
 updated_date: '2026-11-17T00:18:00Z'
