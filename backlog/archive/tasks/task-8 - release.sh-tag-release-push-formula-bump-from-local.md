@@ -1,10 +1,10 @@
 ---
 id: TASK-8
 title: 'release.sh: tag, release, push formula bump from local'
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-11-17T04:20:00Z'
-updated_date: '2026-11-17T04:20:00Z'
+updated_date: '2026-11-17T04:50:00Z'
 labels:
   - model/sonnet
 dependencies: []
@@ -13,7 +13,7 @@ ordinal: 5000
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 release.sh publishes a release and pushes the formula bump
+- [x] #1 release.sh publishes a release and pushes the formula bump
 <!-- AC:END -->
 
 ## Implementation Notes
