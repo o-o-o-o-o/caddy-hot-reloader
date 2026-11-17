@@ -48,7 +48,7 @@ A Caddy v2 module that provides hot-reloading for wildcard local development sit
 ### Homebrew Distribution
 
 - **Formula/caddy-hot-reloader.rb** - Homebrew formula
-- **.github/workflows/update-formula.yml** - Auto-update workflow
+- **release.sh** - Publishes a release and pushes the formula bump
 - **.github/dependabot.yml** - Automatic dependency updates (weekly)
 
 ## Installation Paths
@@ -150,7 +150,7 @@ Build dependencies:
 
 1. **Use This Repo as Homebrew Tap Source**
    - Keep `Formula/caddy-hot-reloader.rb` in this repository
-   - Keep `.github/workflows/update-formula.yml` in this repository
+   - Release with `./release.sh vX.Y.Z`
    - Follow `backlog/docs/HOMEBREW_SETUP.md`
 
 2. **Tag First Release**

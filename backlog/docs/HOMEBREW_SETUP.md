@@ -18,7 +18,7 @@ brew install caddy-hot-reloader
 This repository already contains:
 
 - `Formula/caddy-hot-reloader.rb`
-- `.github/workflows/update-formula.yml`
+- `release.sh`
 
 No separate `homebrew-*` repository is required.
 
@@ -28,9 +28,9 @@ No separate `homebrew-*` repository is required.
 git clone https://github.com/o-o-o-o-o/caddy-hot-reloader
 cd caddy-hot-reloader
 
-# Ensure Formula and workflow are committed
-git add Formula/caddy-hot-reloader.rb .github/workflows/update-formula.yml
-git commit -m "Add Homebrew formula and update workflow"
+# Ensure Formula and release script are committed
+git add Formula/caddy-hot-reloader.rb release.sh
+git commit -m "Add Homebrew formula and release script"
 git push origin main
 
 ```
