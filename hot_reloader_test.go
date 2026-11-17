@@ -2,6 +2,7 @@ package hotreloader
 
 import (
 	"context"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -121,5 +122,32 @@ func TestHeadScriptRejectsExtraArgs(t *testing.T) {
 	d := caddyfile.NewTestDispenser("hot_reloader {\n head_script /a.js /b.js\n}")
 	if err := (&HotReloader{}).UnmarshalCaddyfile(d); err == nil {
 		t.Fatal("want error for extra head_script argument")
+	}
+}
+
+// headerSpy records the status passed to WriteHeader on the real writer.
+type headerSpy struct {
+	http.ResponseWriter
+	status int
+}
+
+func (s *headerSpy) WriteHeader(code int) {
+	s.status = code
+	s.ResponseWriter.WriteHeader(code)
+}
+
+func TestFlushEmptyHTMLBodyWritesHeader(t *testing.T) {
+	h := &HotReloader{logger: zap.NewNop()}
+	spy := &headerSpy{ResponseWriter: httptest.NewRecorder()}
+	rw := &responseWrapper{ResponseWriter: spy, host: "test.example", hotReloader: h, expectsHTML: true}
+	rw.Header().Set("Content-Type", "text/html")
+	rw.WriteHeader(200)
+	rw.Flush()
+
+	if spy.status != 200 {
+		t.Fatalf("WriteHeader not forwarded for empty body, status = %d", spy.status)
+	}
+	if got := rw.Header().Get("X-Hot-Reload"); got != "enabled" {
+		t.Errorf("X-Hot-Reload = %q, want enabled", got)
 	}
 }

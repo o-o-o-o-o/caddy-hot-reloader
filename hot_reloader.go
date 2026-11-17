@@ -279,7 +279,12 @@ func (rw *responseWrapper) Write(b []byte) (int, error) {
 
 // Flush writes the buffered response with injected script
 func (rw *responseWrapper) Flush() {
-	if rw.shouldInject && len(rw.buffer) > 0 {
+	if rw.shouldInject && len(rw.buffer) == 0 {
+		// Empty body: nothing to inject, but the header must still reach the client
+		rw.ResponseWriter.WriteHeader(rw.statusCode)
+		return
+	}
+	if rw.shouldInject {
 		body := string(rw.buffer)
 
 		if url := rw.hotReloader.HeadScript; url != "" {
