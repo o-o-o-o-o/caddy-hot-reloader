@@ -1,10 +1,10 @@
 ---
 id: TASK-10
 title: 'Docs: record uuu sync and install context in AGENTS.md files'
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-11-19T22:01:00Z'
-updated_date: '2026-11-19T22:31:00Z'
+updated_date: '2026-11-19T22:34:00Z'
 labels:
   - model/sonnet
 dependencies: []
