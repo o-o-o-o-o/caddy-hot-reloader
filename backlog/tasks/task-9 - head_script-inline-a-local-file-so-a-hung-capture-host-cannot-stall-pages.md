@@ -1,10 +1,10 @@
 ---
 id: TASK-9
 title: 'head_script: inline a local file so a hung capture host cannot stall pages'
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-11-19T21:54:00Z'
-updated_date: '2026-11-19T22:19:00Z'
+updated_date: '2026-11-23T21:54:00Z'
 labels:
   - model/sonnet
 dependencies: []
@@ -19,11 +19,11 @@ Measured 2026-11-19 on why: a head_script URL that accepts the connection and ne
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 head_script <path> emits an inline script as the first child of head; head_script <url> keeps its current output
-- [ ] #2 The file is cached and reloads after an mtime change, without a Caddy restart
-- [ ] #3 A body that contains a literal closing script tag cannot end the inline script early
-- [ ] #4 A test with a never-answering host shows that inline mode renders the page at once
-- [ ] #5 README documents both forms and the blocking behaviour of the URL form
+- [x] #1 head_script <path> emits an inline script as the first child of head; head_script <url> keeps its current output
+- [x] #2 The file is cached and reloads after an mtime change, without a Caddy restart
+- [x] #3 A body that contains a literal closing script tag cannot end the inline script early
+- [x] #4 A test with a never-answering host shows that inline mode renders the page at once
+- [x] #5 README documents both forms and the blocking behaviour of the URL form
 - [ ] #6 Release as a new version; formula bumped by release.sh
 <!-- AC:END -->
 

@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/caddyserver/caddy/v2"
@@ -36,6 +38,7 @@ type HotReloader struct {
 	logger         *zap.Logger
 	manager        *SiteManager
 	idleTimeoutDur time.Duration
+	headFile       *headFileCache
 }
 
 // CaddyModule returns the Caddy module information
@@ -76,6 +79,10 @@ func (h *HotReloader) Provision(ctx caddy.Context) error {
 		h.IdleTimeout = "30m"
 	}
 	h.idleTimeoutDur = parsedIdleTimeout
+
+	if headScriptFile(h.HeadScript) {
+		h.headFile = &headFileCache{path: h.HeadScript}
+	}
 
 	// Initialize site manager
 	h.manager = NewSiteManager(h.logger, h)
@@ -214,15 +221,75 @@ func (h *HotReloader) handleWebSocket(w http.ResponseWriter, r *http.Request) er
 // headOpenTag matches <head> and <head attrs>, not <header>
 var headOpenTag = regexp.MustCompile(`(?i)<head(\s[^>]*)?>`)
 
-// injectHeadScript puts a script tag for url right after the opening <head> tag.
+// headFileCache holds the content of a head_script file and reloads it when
+// the mtime or size changes.
+type headFileCache struct {
+	path    string
+	mu      sync.Mutex
+	modTime time.Time
+	size    int64
+	tag     string
+	warned  atomic.Bool // set after the first read failure is logged; cleared on success
+}
+
+// get returns the inline script tag for the file.
+func (c *headFileCache) get() (string, error) {
+	info, err := os.Stat(c.path)
+	if err != nil {
+		return "", err
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.tag != "" && info.ModTime().Equal(c.modTime) && info.Size() == c.size {
+		c.warned.Store(false)
+		return c.tag, nil
+	}
+	data, err := os.ReadFile(c.path)
+	if err != nil {
+		return "", err
+	}
+	c.warned.Store(false)
+	c.tag = "<script>" + escapeInlineScript(string(data)) + "</script>"
+	c.modTime, c.size = info.ModTime(), info.Size()
+	return c.tag, nil
+}
+
+var scriptClose = regexp.MustCompile(`(?i)</script`)
+
+// escapeInlineScript stops script text from ending its own element. The escape
+// is valid inside JS strings, regex literals and comments.
+func escapeInlineScript(js string) string {
+	return scriptClose.ReplaceAllStringFunc(js, func(m string) string { return "<\\/" + m[2:] })
+}
+
+// headScriptFile reports whether head_script names a local file: an absolute
+// path that is a regular file. Anything else is a URL, so a root-relative URL
+// such as /faults.js still works.
+func headScriptFile(v string) bool {
+	if !filepath.IsAbs(v) {
+		return false
+	}
+	info, err := os.Stat(v)
+	return err == nil && info.Mode().IsRegular()
+}
+
+// injectHeadTag puts tag right after the opening <head> tag.
 // It returns false when the body has no <head>.
-func injectHeadScript(body, url string) (string, bool) {
+func injectHeadTag(body, tag string) (string, bool) {
 	loc := headOpenTag.FindStringIndex(body)
 	if loc == nil {
 		return body, false
 	}
-	tag := `<script src="` + html.EscapeString(url) + `"></script>`
 	return body[:loc[1]] + tag + body[loc[1]:], true
+}
+
+// headScriptTag returns the tag for head_script: an inline script for a file,
+// a script src for a URL.
+func (h *HotReloader) headScriptTag() (string, error) {
+	if h.headFile != nil {
+		return h.headFile.get()
+	}
+	return `<script src="` + html.EscapeString(h.HeadScript) + `"></script>`, nil
 }
 
 // responseWrapper wraps http.ResponseWriter to inject client script
@@ -287,12 +354,20 @@ func (rw *responseWrapper) Flush() {
 	if rw.shouldInject {
 		body := string(rw.buffer)
 
-		if url := rw.hotReloader.HeadScript; url != "" {
-			var ok bool
-			if body, ok = injectHeadScript(body, url); !ok {
+		if hs := rw.hotReloader.HeadScript; hs != "" {
+			if tag, err := rw.hotReloader.headScriptTag(); err != nil {
+				if rw.hotReloader.headFile.warned.CompareAndSwap(false, true) {
+					rw.hotReloader.logger.Warn("head_script file not readable, not injected",
+						zap.String("host", rw.host),
+						zap.String("head_script", hs),
+						zap.Error(err))
+				}
+			} else if b, ok := injectHeadTag(body, tag); ok {
+				body = b
+			} else {
 				rw.hotReloader.logger.Warn("no <head> tag found, head_script not injected",
 					zap.String("host", rw.host),
-					zap.String("head_script", url))
+					zap.String("head_script", hs))
 			}
 		}
 

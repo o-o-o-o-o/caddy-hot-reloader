@@ -200,22 +200,29 @@ xcaddy build --with github.com/o-o-o-o-o/caddy-hot-reloader=.
 
 ### `head_script`
 
-`head_script <url>` adds `<script src="url"></script>` as the first child of `<head>` in each injected HTML response. The script runs before every page script. The reload client stays before `</body>`.
+`head_script <url|file>` adds a script as the first child of `<head>` in each injected HTML response. The script runs before every page script. The reload client stays before `</body>`.
+
+| Form | Example | Output |
+|---|---|---|
+| URL | `head_script https://dev.faults.why/capture.php` | `<script src="url"></script>` |
+| File | `head_script /Users/me/capture.js` | `<script>file content</script>` |
+
+A value is a file when it is an absolute path to a regular file when the config loads. Any other value is a URL, so `head_script /faults.js` stays a root-relative URL. Create the file before you load or reload the config.
+
+**Blocking.** The URL form is a blocking script. If the host accepts the connection and never answers, every page of the site stays in `readyState` `loading` with an empty body. Use the file form for a host that can hang.
+
+**File form.** The plugin reads the file once and checks its mtime and size on each response. It reloads the file when either changes. A Caddy restart is not necessary. The plugin escapes `</script` in the file, so a script body cannot end its own element. If the file cannot be read, the plugin logs one warning, skips the head script, and injects it again when the file is readable.
+
+**CSP.** An inline script is blocked by a `script-src` policy that has no `'unsafe-inline'`. The URL form is not blocked if the policy allows the host.
 
 If a response has no `<head>`, the plugin logs one warning and skips the head script. The reload client still goes in. Without the directive, responses do not change.
 
 ### Roll Back the Caddy Binary
 
-Before you install a new binary, keep the live one:
+Do not copy a binary into `/opt/homebrew/bin`. Switch the brew link, then restart:
 
 ```bash
-cp -p /opt/homebrew/bin/caddy ./caddy.prev
-```
-
-To roll back, put the old binary in place and restart:
-
-```bash
-cp -p ./caddy.prev /opt/homebrew/bin/caddy && brew services restart caddy
+brew unlink caddy-hot-reloader && brew link caddy && brew services restart caddy
 ```
 
 ### Using Snippets (Global Config)

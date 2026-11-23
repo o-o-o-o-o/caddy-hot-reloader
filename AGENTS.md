@@ -27,7 +27,7 @@ Install only through Homebrew. Do not copy a built `./caddy` over an installed b
 
 ## Rules
 
-- `head_script <url>` adds a blocking `<script src>` as the first child of `<head>`. A URL that accepts a connection and never answers freezes every page of the site (measured 2026-11-19). TASK-9 adds a local-file form that inlines the script.
+- `head_script <url>` adds a blocking `<script src>` as the first child of `<head>`. A URL that accepts a connection and never answers freezes every page of the site (measured 2026-11-19). `head_script <file>` (an absolute path) inlines the file instead, with no host to hang. The plugin does not wrap or configure the file: the file holds the complete script.
 - The two Caddyfiles differ. `uuu` (`~/🍇/Dotfiles/uuu/Caddyfile`, in git) writes `{$SITE_TLD:uuu}` and has one `hot_reloader` block. `why` (`/opt/homebrew/etc/Caddyfile`, not in git) writes `.why` in full and has four. Edit each for its machine.
 - `hot_reloader` injects before the first `</body>`, even inside an inline script string.
 - `caddy.prev` is a copy of the old v2.11.7 binary. It is not installed. The README rollback steps copy to `/opt/homebrew/bin/caddy`, which no longer exists on `why`. Roll back through brew.
