@@ -5,8 +5,8 @@
 class CaddyHotReloader < Formula
   desc "Caddy web server with hot-reload plugin for wildcard local development"
   homepage "https://github.com/o-o-o-o-o/caddy-hot-reloader"
-  url "https://github.com/o-o-o-o-o/caddy-hot-reloader/archive/refs/tags/v0.8.0.tar.gz"
-  sha256 "302a9adf90bb6cb4d4a36cc38b6f37068aa0d80a83eacddaa7a0ead50e0ad3d8"
+  url "https://github.com/o-o-o-o-o/caddy-hot-reloader/archive/refs/tags/v0.9.0.tar.gz"
+  sha256 "4b2f01fa55fbd11f7f83c0117344c19090d346469b9d4c7e11dca4a80f22a15f"
   license "Apache-2.0"
   head "https://github.com/o-o-o-o-o/caddy-hot-reloader.git", branch: "main"
 
